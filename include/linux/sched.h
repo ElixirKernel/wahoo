@@ -2045,7 +2045,7 @@ struct task_struct {
 	bool lmk_sigkill_sent;
 
 #ifdef CONFIG_MMU
-	struct list_head oom_reaper_list;
+	struct task_struct *oom_reaper_list;
 #endif
 /* CPU-specific state of this task */
 	struct thread_struct thread;
