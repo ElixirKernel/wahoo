@@ -2381,7 +2381,7 @@ static int __validate_layers(struct msm_fb_data_type *mfd,
 	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
 
 	struct mdss_mdp_mixer *mixer = NULL;
-	struct mdp_input_layer *layer, *layer_list;
+	struct mdp_input_layer *layer = NULL, *layer_list;
 	struct mdss_mdp_validate_info_t *validate_info_list = NULL;
 	bool is_single_layer = false, force_validate;
 	enum layer_pipe_q pipe_q_type;
