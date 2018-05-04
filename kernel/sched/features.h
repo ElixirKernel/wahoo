@@ -110,3 +110,8 @@ SCHED_FEAT(SCHEDTUNE_BOOST_HOLD_ALL, true)
  * If disabled, no bias will be applied.
  */
 SCHED_FEAT(STUNE_BOOST_BIAS_BIG, true)
+
+/*
+ * UtilEstimation. Use estimated CPU utilization.
+ */
+SCHED_FEAT(UTIL_EST, false)
