@@ -7,7 +7,7 @@
 #############################################################
 
 make O=out clean && make mrproper
-make O=out ARCH=arm64 flash_defconfig
+make O=out ARCH=arm64 elixir_wahoo_defconfig
 
 make -j$(nproc --all) O=out \
                       ARCH=arm64 \
