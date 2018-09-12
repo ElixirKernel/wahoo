@@ -8,7 +8,7 @@
 
 export CCACHE= ccache
 
-make O=out clean && make mrproper
+make O=out clean && make O=out mrproper
 make O=out ARCH=arm64 elixir_wahoo_defconfig
 
 export CLANG_TC=~/Android/Toolchains/clang-7.0/bin/clang
