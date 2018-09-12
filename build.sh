@@ -11,7 +11,7 @@ export CCACHE= ccache
 make O=out clean && make mrproper
 make O=out ARCH=arm64 elixir_wahoo_defconfig
 
-export CLANG_TC=~/Android/Toolchains/dragontc-8.0/bin/clang
+export CLANG_TC=~/Android/Toolchains/clang-7.0/bin/clang
 export KBUILD_COMPILER_STRING=$(${CLANG_TC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 
 make -j$(nproc --all) O=out \
