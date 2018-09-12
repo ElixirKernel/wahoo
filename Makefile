@@ -656,6 +656,9 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 
+# Processor-specific tunes for Snapdragon 835
+KBUILD_CFLAGS   += $(call cc-option,-mtune=cortex-a73.cortex-a53)
+
 ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= $(call cc-option,-ffunction-sections,)
 KBUILD_CFLAGS	+= $(call cc-option,-fdata-sections,)
@@ -668,7 +671,7 @@ else
 ifeq ($(cc-name), clang)
 KBUILD_CFLAGS	+= -O3 $(call cc-option,-fsanitize=local-init)
 else
-KBUILD_CFLAGS   += -O2
+KBUILD_CFLAGS   += -O3
 endif
 endif
 
