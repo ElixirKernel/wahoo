@@ -4,7 +4,6 @@ SUBLEVEL = 157
 EXTRAVERSION =
 NAME = Blurry Fish Butt
 
-CCACHE := ccache
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
@@ -303,8 +302,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 
-HOSTCC       = $(CCACHE) gcc
-HOSTCXX      = $(CCACHE) g++
+HOSTCC       = gcc
+HOSTCXX      = g++
 HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O3 -fomit-frame-pointer -std=gnu89
 HOSTCXXFLAGS = -O3
 
@@ -350,7 +349,7 @@ include scripts/Kbuild.include
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-CC		= $(CCACHE) $(CROSS_COMPILE)gcc
+CC		= $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -379,14 +378,7 @@ CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 # Optimization flags specific to clang
 CLANG_OPT_FLAGS :=--optimize -O3 -mcpu=kryo \
 		-funsafe-math-optimizations -ffast-math \
-        -fvectorize -fslp-vectorize -fopenmp \
-		-mllvm -polly \
-		-mllvm -polly-run-dce \
-		-mllvm -polly-run-inliner \
-		-mllvm -polly-opt-fusion=max \
-		-mllvm -polly-ast-use-context \
-		-mllvm -polly-detect-keep-going \
-		-mllvm -polly-vectorizer=stripmine
+        -fvectorize -fslp-vectorize -fopenmp
 
 
 ifeq ($(cc-name),clang)
@@ -684,9 +676,6 @@ ifeq ($(cc-name),gcc)
 KBUILD_CFLAGS	+= $(call cc-ifversion, -le, 0409, \
 			$(call cc-disable-warning,maybe-uninitialized,))
 endif
-
-# Disallow introduction of unaligned stores
-KBUILD_CFLAGS   += $(call cc-option,--param=store-merging-allow-unaligned=0)
 
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
