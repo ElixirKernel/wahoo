@@ -378,8 +378,18 @@ CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 # Optimization flags specific to clang
 CLANG_OPT_FLAGS :=--optimize -O3 -mcpu=kryo \
 		-funsafe-math-optimizations -ffast-math \
-        -fvectorize -fslp-vectorize -fopenmp
-
+        -ffinite-math-only -fno-trapping-math \
+        -freciprocal-math -fassociative-math \
+        -fomit-frame-pointer -fno-signed-zeros \
+        -fvectorize -fslp-vectorize -fopenmp \
+        -mllvm -polly \
+        -mllvm -polly-parallel \
+        -mllvm -polly-run-dce \
+        -mllvm -polly-run-inliner \
+        -mllvm -polly-opt-fusion=max \
+        -mllvm -polly-ast-use-context \
+        -mllvm -polly-vectorizer=stripmine \
+        -mllvm -polly-detect-keep-going
 
 ifeq ($(cc-name),clang)
 ifneq ($(CROSS_COMPILE),)
