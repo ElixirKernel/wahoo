@@ -6,8 +6,6 @@
 ##             environment and run it before building.            ##
 ####################################################################
 
-KERNEL_VER=V1.6
-
 BUILD_KERNEL_DIR=$(pwd)
 BUILD_KERNEL_OUT=$BUILD_KERNEL_DIR/../wahoo_kernel_out
 BUILD_KERNEL_OUT_DIR=$BUILD_KERNEL_OUT/KERNEL_OBJ
@@ -112,9 +110,14 @@ FUNCTION_MAKE_ZIP()
     cp $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/dtbo.img $AK2_DIR
     cp $BUILD_KERNEL_OUT_DIR/$DTS_DIR/msm8998-v2.1-soc.dtb $AK2_DIR/dtbs
 
+if [ -s ~/KERNELver ]; then
+    export KERNEL_VER=$(cat ~/KERNELver)
+else
+    export KERNEL_VER=`grep 'pie-v*' ${BUILD_KERNEL_OUT_DIR}/.config | sed 's/.*".//g' | sed 's/-S.*//g'`
+fi
     cd $AK2_DIR
-    zip -r9 Elixir-wahoo-Kernel-$KERNEL_VER-`date +[%m-%d-%y-%H%M%S]`.zip * -x .git README.md *placeholder
-    mv Elixir-wahoo-Kernel-*.zip $BUILD_KERNEL_OUT
+    zip -r9 elixir-wahoo-kernel-${KERNEL_VER}-`date +[%m-%d-%y-%H%M%S]`.zip * -x .git README.md *placeholder
+    mv elixir-wahoo-kernel-*.zip $BUILD_KERNEL_OUT
 
 	echo -e "${yellow}"
 	echo "=========================="
