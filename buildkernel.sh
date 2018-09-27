@@ -115,11 +115,11 @@ FUNCTION_MAKE_ZIP()
 if [ -s ~/KERNELver ]; then
     export KERNEL_VER=$(cat ~/KERNELver)
 else
-    export KERNEL_VER=`grep 'pie-v*' ${BUILD_KERNEL_OUT_DIR}/.config | sed 's/.*".//g' | sed 's/-S.*//g'`
+    export KERNEL_VER=`grep 'ElixirKernel-*v' ${BUILD_KERNEL_OUT_DIR}/.config | sed 's/.*".//g' | sed 's/-S.*//g'`
 fi
     cd $AK2_DIR
-    zip -r9 elixir-wahoo-kernel-${KERNEL_VER}-`date +[%m-%d-%y-%H%M%S]`.zip * -x .git README.md *placeholder
-    mv elixir-wahoo-kernel-*.zip $BUILD_KERNEL_OUT
+    zip -r9 wahoo-${KERNEL_VER}-`date +[%m-%d-%y-%H%M%S]`.zip * -x .git README.md *placeholder
+    mv wahoo-*.zip $BUILD_KERNEL_OUT
 
 	echo -e "${yellow}"
 	echo "=========================="
