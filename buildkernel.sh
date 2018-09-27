@@ -43,6 +43,8 @@ FUNCTION_GENERATE_DEFCONFIG()
         echo "build config="$KERNEL_DEFCONFIG ""
         echo -e "${restore}"
 
+    make O=$BUILD_KERNEL_OUT_DIR clean && make mrproper
+
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
 	         CC=$CLANG_CROSS_COMPILE $KERNEL_DEFCONFIG || exit -1
 
