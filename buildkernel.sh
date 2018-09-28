@@ -34,16 +34,60 @@ white='\033[1;97m'
 blink_red='\033[05;31m'
 restore='\033[0m'
 
+FUNCTION_CLEAN()
+{
+       echo -e "${blink_red}"
+       echo "==================================="
+       echo " START : FUNCTION CLEAN            "
+       echo "==================================="
+       echo -e "${restore}"
+
+# Make clean source
+echo -e "${cyan}"
+read -t 10 -p "***Make clean source, 10sec timeout, select (y/n)?***";
+if [ "$REPLY" == "y" ]; then
+
+      make O=$BUILD_KERNEL_OUT_DIR clean
+      make O=$BUILD_KERNEL_OUT_DIR mrproper
+
+      echo -e "${restore}"
+      echo -e "${yellow}"
+      echo "==================================="
+      echo "kernel source clean success        "
+      echo "==================================="
+      echo -e "${restore}"
+fi;
+
+# clear ccache
+echo -e "${green}"
+read -t 10 -p "***Clear ccache but keeping the config file, 10sec timeout, select (y/n)?***";
+if [ "$REPLY" == "y" ]; then
+
+      ccache -C -z;
+
+      echo -e "${restore}"
+      echo -e "${yellow}"
+      echo "==================================="
+      echo " ccache & stat clean success       "
+      echo "==================================="
+      echo -e "${restore}"
+fi;
+
+	echo -e "${yellow}"
+	echo "==================================="
+	echo "  END: FUNCTION CLEAN              "
+	echo "==================================="
+	echo -e "${restore}"
+}
+
 FUNCTION_GENERATE_DEFCONFIG()
 {
         echo -e "${blink_red}"
-        echo "==================================="
-        echo " START : FUNC GENERATE DEFCONFIG   "
-        echo "==================================="
+        echo "======================================="
+        echo " START : FUNCTION GENERATE DEFCONFIG   "
+        echo "======================================="
         echo "build config="$KERNEL_DEFCONFIG ""
         echo -e "${restore}"
-
-    make O=$BUILD_KERNEL_OUT_DIR clean && make mrproper
 
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
 	         CC=$CLANG_CROSS_COMPILE $KERNEL_DEFCONFIG || exit -1
@@ -89,7 +133,7 @@ fi
     echo -e "${yellow}"
     echo "Made Kernel image: $KERNEL_IMG"
     echo -e "${restore}"
-    echo -e "${red}"
+    echo -e "${green}"
     echo "================================="
     echo "  END   : FUNCTION_BUILD_KERNEL  "
     echo "================================="
@@ -104,7 +148,7 @@ FUNCTION_MAKE_ZIP()
         echo "============================"
         echo -e "${restore}"
         echo -e "${cyan}"
-        echo "make boot zip = "Elixir-Wahoo-Kernel-$KERNEL_VER-`date +[%m-%d-%y-%H%M%S]` ""
+        echo "make boot zip = "Elixir-Wahoo-Kernel-"${KERNEL_VER}"-`date +[%m-%d-%y-%H%M%S]` ""
         echo -e "${restore}"
 
     cp $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/$KERNEL_IMG_NAME $KERNEL_IMG
@@ -130,6 +174,7 @@ fi
 
 (
     START_TIME=`date +%s`
+    FUNCTION_CLEAN
     FUNCTION_GENERATE_DEFCONFIG
     FUNCTION_BUILD_KERNEL
     FUNCTION_MAKE_ZIP
