@@ -34,6 +34,12 @@ white='\033[1;97m'
 blink_red='\033[05;31m'
 restore='\033[0m'
 
+# check if "CCACHE" is installed
+if [ ! -e /usr/bin/ccache ]; then
+   echo "You must install 'ccache' to continue";
+   sudo apt-get install ccache;
+fi;
+
 FUNCTION_CLEAN()
 {
        echo -e "${blink_red}"
@@ -41,43 +47,52 @@ FUNCTION_CLEAN()
        echo " START : FUNCTION CLEAN            "
        echo "==================================="
        echo -e "${restore}"
+# clean kernel source code
+	while true; do
 
-# Make clean source
-echo -e "${cyan}"
-read -t 10 -p "***Make clean source, 10sec timeout, select (y/n)?***";
-if [ "$REPLY" == "y" ]; then
+		echo -e "${cyan}";
+		read -rp "Make clean source? (y/n)" yn;
+		echo -e "${restore}"
+		case $yn in
+		   y|Y )
+		       make O=$BUILD_KERNEL_OUT_DIR clean && make distclean && make mrproper;
+		       echo "Source cleaned";
+		       break;
+		       ;;
+		   n|N )
+		        echo "Source not cleaned";
+		        break;
+		        ;;
+		     * )
+		       echo "Please answer yes or no";
+		      ;;
+		  esac;
+	  done;
+# clear ccache & stat
+	while true; do
 
-      make O=$BUILD_KERNEL_OUT_DIR clean
-      make O=$BUILD_KERNEL_OUT_DIR mrproper
-
-      echo -e "${restore}"
-      echo -e "${yellow}"
-      echo "==================================="
-      echo "kernel source clean success        "
-      echo "==================================="
-      echo -e "${restore}"
-fi;
-
-# clear ccache
-echo -e "${green}"
-read -t 10 -p "***Clear ccache but keeping the config file, 10sec timeout, select (y/n)?***";
-if [ "$REPLY" == "y" ]; then
-
-      ccache -C -z;
-
-      echo -e "${restore}"
-      echo -e "${yellow}"
-      echo "==================================="
-      echo " ccache & stat clean success       "
-      echo "==================================="
-      echo -e "${restore}"
-fi;
-
-	echo -e "${yellow}"
-	echo "==================================="
-	echo "  END: FUNCTION CLEAN              "
-	echo "==================================="
-	echo -e "${restore}"
+		echo -e "${cyan}";
+		read -rp "Clear ccache but keeping the config file? (y/n)" yn;
+		echo -e "${restore}"
+		case $yn in
+           y|Y )
+               ccache -C -z;
+               break;
+               ;;
+           n|N )
+               echo "ccache not cleared";
+               break;
+               ;;
+             * )
+               echo "Please answer yes or no";
+              ;;
+          esac;
+      done;
+	  echo -e "${yellow}"
+	  echo "==================================="
+	  echo "  END: FUNCTION CLEAN              "
+	  echo "==================================="
+	  echo -e "${restore}"
 }
 
 FUNCTION_GENERATE_DEFCONFIG()
@@ -86,6 +101,8 @@ FUNCTION_GENERATE_DEFCONFIG()
         echo "======================================="
         echo " START : FUNCTION GENERATE DEFCONFIG   "
         echo "======================================="
+        echo -e "${restore}"
+        echo -e "${cyan}"
         echo "build config="$KERNEL_DEFCONFIG ""
         echo -e "${restore}"
 
