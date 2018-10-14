@@ -6,7 +6,7 @@
 ##             environment and run it before building.            ##
 ####################################################################
 
-BUILD_KERNEL_DIR=$(pwd)
+BUILD_KERNEL_DIR=$(readlink -f .);
 BUILD_KERNEL_OUT=$BUILD_KERNEL_DIR/../wahoo_kernel_out
 BUILD_KERNEL_OUT_DIR=$BUILD_KERNEL_OUT/KERNEL_OBJ
 BOOT_DIR=arch/arm64/boot
@@ -40,6 +40,49 @@ if [ ! -e /usr/bin/ccache ]; then
    sudo apt-get install ccache;
 fi;
 
+FUNCTION_RESET_GIT_BRANCH()
+{
+       echo -e "${blink_red}"
+       echo "==================================="
+       echo " START : FUNCTION RESET GIT BRANCH "
+       echo "==================================="
+       echo -e "${restore}"
+
+parse_git_branch() {
+       git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e "s/* \(.*\)/\1/";
+       }
+       BRANCH=$(parse_git_branch);
+
+	while true; do
+
+		echo -e "${cyan}"
+		read -rp "Reset current local branch to gitHub repo? (y/n)" yn;
+		echo -e "${restore}"
+        case $yn in
+			y|Y )
+			    git reset --hard origin/"$BRANCH" && git clean -fd;
+				echo -e "${cyan}"
+				echo "Local branch reset to $BRANCH";
+				echo -e "${restore}"
+				break;
+				;;
+			n|N )
+			    echo "Local branch not reset";
+			    break;
+			   ;;
+			 * )
+			    echo "Please answer yes or no";
+			   ;;
+		   esac;
+	   done;
+
+	  echo -e "${yellow}"
+	  echo "==================================="
+	  echo "  END: FUNCTION RESET GIT BRANCH   "
+	  echo "==================================="
+	  echo -e "${restore}"
+}
+
 FUNCTION_CLEAN()
 {
        echo -e "${blink_red}"
@@ -55,7 +98,9 @@ FUNCTION_CLEAN()
 		echo -e "${restore}"
 		case $yn in
 		   y|Y )
-		       make O=$BUILD_KERNEL_OUT_DIR clean && make distclean && make mrproper;
+		       make O=$BUILD_KERNEL_OUT_DIR clean;
+		       make O=$BUILD_KERNEL_OUT_DIR distclean;
+		       make O=$BUILD_KERNEL_OUT_DIR mrproper;
 		       echo "Source cleaned";
 		       break;
 		       ;;
@@ -102,8 +147,8 @@ FUNCTION_GENERATE_DEFCONFIG()
         echo " START : FUNCTION GENERATE DEFCONFIG   "
         echo "======================================="
         echo -e "${restore}"
-        echo -e "${cyan}"
-        echo "build config="$KERNEL_DEFCONFIG ""
+        echo -e "${green}"
+        echo "build config = "$KERNEL_DEFCONFIG ""
         echo -e "${restore}"
 
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
@@ -163,10 +208,12 @@ FUNCTION_MAKE_ZIP()
         echo " START : FUNCTION MAKE ZIPS "
         echo "============================"
         echo -e "${restore}"
-        echo -e "${cyan}"
-        echo "make boot zip = "Elixir-Wahoo-Kernel-$KERNEL_VER-`date +[%m-%d-%y-%H%M%S]` ""
-        echo -e "${restore}"
 
+if [ -s ~/KERNELver ]; then
+        echo -e "${green}" "make boot zip = "Wahoo-$(cat ~/KERNELver)-`date +[%m-%d-%y-%H%M%S]` """${restore}"
+else
+        echo -e "${green}" "make boot zip = "Wahoo-`grep 'ElixirKernel-*v' ${BUILD_KERNEL_OUT_DIR}/.config | sed 's/.*".//g' | sed 's/-S.*//g'`-`date +[%m-%d-%y-%H%M%S]`"""${restore}"
+fi;
 # check if "AnyKernel2" is there
 if [ ! -e /$AK2_DIR ]; then
    echo "You must add 'AnyKernel2' to continue";
@@ -196,6 +243,7 @@ fi
 
 (
     START_TIME=`date +%s`
+    FUNCTION_RESET_GIT_BRANCH
     FUNCTION_CLEAN
     FUNCTION_GENERATE_DEFCONFIG
     FUNCTION_BUILD_KERNEL
@@ -204,7 +252,8 @@ fi
     END_TIME=`date +%s`
 
     let "ELAPSED_TIME=$END_TIME-$START_TIME"
-    echo -e "${cyan}"
+    echo -e "${green}"
     echo "Total compile time is $ELAPSED_TIME seconds"
     echo -e "${restore}"
-) 2>&1
+) 2>&1 | tee -a ./build.log;
+
