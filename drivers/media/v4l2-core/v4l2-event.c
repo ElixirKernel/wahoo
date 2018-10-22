@@ -240,7 +240,7 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 	if (sev->ops && sev->ops->add) {
 		ret = sev->ops->add(sev, elems);
 		if (ret) {
-			kfree(sev);
+			kvfree(sev);
 			goto out_unlock;
 		}
 	}
@@ -310,8 +310,9 @@ int v4l2_event_unsubscribe(struct v4l2_fh *fh,
 	if (sev && sev->ops && sev->ops->del)
 		sev->ops->del(sev);
 
-	kvfree(sev);
 	mutex_unlock(&fh->subscribe_lock);
+
+	kvfree(sev);
 
 	return 0;
 }
