@@ -375,7 +375,7 @@ CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
 CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 
 # Optimization flags specific to clang
-CLANG_OPT_FLAGS :=-O3 -mcpu=kryo \
+CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
 		-funsafe-math-optimizations -ffast-math \
 		-fvectorize -fslp-vectorize -fopenmp \
 		-mllvm -polly \
