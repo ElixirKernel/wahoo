@@ -14,7 +14,7 @@ DTS_DIR=arch/arm64/boot/dts/qcom
 CONFIG_DIR=arch/arm64/configs
 AK2_DIR=$BUILD_KERNEL_DIR/../AnyKernel2
 
-export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-6.0/bin/clang
+export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-8.0/bin/clang
 export PATH=~/Android/Toolchains/aarch64-linux-android-4.9/bin:$PATH
 export BUILD_CROSS_COMPILE_ARCH64=aarch64-linux-android-
 export BUILD_CROSS_COMPILE_ARM32=~/Android/Toolchains/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
