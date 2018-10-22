@@ -14,8 +14,9 @@ DTS_DIR=arch/arm64/boot/dts/qcom
 CONFIG_DIR=arch/arm64/configs
 AK2_DIR=$BUILD_KERNEL_DIR/../AnyKernel2
 
-export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-7.0/bin/clang
-export BUILD_CROSS_COMPILE_ARCH64=~/Android/Toolchains/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-6.0/bin/clang
+export PATH=~/Android/Toolchains/aarch64-linux-android-4.9/bin:$PATH
+export BUILD_CROSS_COMPILE_ARCH64=aarch64-linux-android-
 export BUILD_CROSS_COMPILE_ARM32=~/Android/Toolchains/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
 export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 export BUILD_JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
