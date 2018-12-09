@@ -19,6 +19,8 @@
 #include <linux/kasan.h>
 #include <linux/kthread.h>
 #include <linux/freezer.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
 #include "internal.h"
 
 #ifdef CONFIG_COMPACTION
@@ -1878,6 +1880,12 @@ static void kcompactd_do_work(pg_data_t *pgdat)
 	trace_mm_compaction_kcompactd_wake(pgdat->node_id, cc.order,
 							cc.classzone_idx);
 	count_vm_event(KCOMPACTD_WAKE);
+
+	cpu_input_boost_kick();
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+#if defined(CONFIG_CPU_INPUT_BOOST_DEBUG) || defined(CONFIG_DEVFREQ_BOOST_DEBUG)
+	pr_info("kicked cpu boost and max cpubw boost for 100 ms\n");
+#endif
 
 	for (zoneid = 0; zoneid <= cc.classzone_idx; zoneid++) {
 		int status;
