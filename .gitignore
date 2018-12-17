@@ -38,7 +38,6 @@ modules.builtin
 Module.symvers
 *.dwo
 *.su
-/out/*
 
 #
 # Top-level generic files
