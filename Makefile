@@ -373,7 +373,8 @@ CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
 		-funsafe-math-optimizations -ffast-math \
 		-fvectorize -fslp-vectorize -fopenmp \
-		-mllvm -polly -lgomp \
+		-mllvm -polly \
+		-mllvm -polly-parallel -lgomp \
 		-mllvm -polly-run-dce \
 		-mllvm -polly-run-inliner \
 		-mllvm -polly-opt-fusion=max \
