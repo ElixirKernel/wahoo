@@ -15,8 +15,7 @@ CONFIG_DIR=arch/arm64/configs
 AK2_DIR=$BUILD_KERNEL_DIR/../AnyKernel2
 
 export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-8.0/bin/clang
-export PATH=~/Android/Toolchains/aarch64-linux-android-4.9/bin:$PATH
-export BUILD_CROSS_COMPILE_ARCH64=aarch64-linux-android-
+export BUILD_CROSS_COMPILE_ARCH64=~/Android/Toolchains/aarch64-linux-android-4.9/bin/aarch64-linux-android-
 export BUILD_CROSS_COMPILE_ARM32=~/Android/Toolchains/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
 export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 export BUILD_JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
@@ -152,8 +151,14 @@ FUNCTION_GENERATE_DEFCONFIG()
         echo "build config ="$KERNEL_DEFCONFIG ""
         echo -e "${restore}"
 
+if [ "$CLANG_CROSS_COMPILE" ]
+then
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
 	         CC=$CLANG_CROSS_COMPILE $KERNEL_DEFCONFIG || exit -1
+else
+	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
+			CROSS_COMPILE=$BUILD_CROSS_COMPILE_ARCH64 $KERNEL_DEFCONFIG || exit -1
+fi
 
 	cp $BUILD_KERNEL_OUT_DIR/.config $BUILD_KERNEL_DIR/$CONFIG_DIR/$KERNEL_DEFCONFIG
 
@@ -175,7 +180,7 @@ FUNCTION_BUILD_KERNEL()
     rm $KERNEL_IMG $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/Image
     rm -rf $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/dts
 
-if [ "$USE_CCACHE" ]
+if [ "$CLANG_CROSS_COMPILE" ]
 then
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
             CC="ccache $CLANG_CROSS_COMPILE" \
@@ -257,4 +262,3 @@ fi
     echo "Total compile time is $ELAPSED_TIME seconds"
     echo -e "${restore}"
 ) 2>&1 | tee -a ./build.log;
-
