@@ -30,8 +30,6 @@ red='\033[1;91m'
 blue='\033[0;94m'
 yellow='\033[1;93m'
 cyan='\033[1;96m'
-white='\033[1;97m'
-blink_red='\033[05;31m'
 restore='\033[0m'
 
 # check if "CCACHE" is installed
@@ -42,7 +40,7 @@ fi;
 
 FUNCTION_RESET_GIT_BRANCH()
 {
-       echo -e "${blink_red}"
+       echo -e "${green}"
        echo "==================================="
        echo " START : FUNCTION RESET GIT BRANCH "
        echo "==================================="
@@ -54,29 +52,28 @@ parse_git_branch() {
        BRANCH=$(parse_git_branch);
 
 	while true; do
+	    echo -e "${yellow}"
+	    read -rp "Reset current local branch to gitHub repo? (y/n)" yn;
+	    echo -e "${restore}"
+	    case $yn in
+	y|Y )
+	    git reset --hard origin/"$BRANCH" && git clean -fd;
+	    echo -e "${yellow}"
+	    echo "Local branch reset to $BRANCH";
+	    echo -e "${restore}"
+	    break;
+	    ;;
+	n|N )
+	    echo -e "${yellow}" "Local branch not reset"${restore};
+	    break;
+	    ;;
+	  * )
+	    echo -e "${yellow}" "Please answer yes or no"${restore};
+	    ;;
+	    esac;
+	 done;
 
-		echo -e "${cyan}"
-		read -rp "Reset current local branch to gitHub repo? (y/n)" yn;
-		echo -e "${restore}"
-        case $yn in
-			y|Y )
-			    git reset --hard origin/"$BRANCH" && git clean -fd;
-				echo -e "${cyan}"
-				echo "Local branch reset to $BRANCH";
-				echo -e "${restore}"
-				break;
-				;;
-			n|N )
-			    echo "Local branch not reset";
-			    break;
-			   ;;
-			 * )
-			    echo "Please answer yes or no";
-			   ;;
-		   esac;
-	   done;
-
-	  echo -e "${yellow}"
+	  echo -e "${green}"
 	  echo "==================================="
 	  echo "  END: FUNCTION RESET GIT BRANCH   "
 	  echo "==================================="
@@ -85,70 +82,72 @@ parse_git_branch() {
 
 FUNCTION_CLEAN()
 {
-       echo -e "${blink_red}"
+       echo -e "${green}"
        echo "==================================="
        echo " START : FUNCTION CLEAN            "
        echo "==================================="
        echo -e "${restore}"
-# clean kernel source code
-	while true; do
 
-		echo -e "${cyan}";
+    # clean kernel source code
+	while true; do
+		echo -e "${yellow}";
 		read -rp "Make clean source? (y/n)" yn;
 		echo -e "${restore}"
 		case $yn in
-		   y|Y )
-		       make O=$BUILD_KERNEL_OUT_DIR clean;
-		       make O=$BUILD_KERNEL_OUT_DIR distclean;
-		       make O=$BUILD_KERNEL_OUT_DIR mrproper;
-		       echo "Source cleaned";
-		       break;
-		       ;;
-		   n|N )
-		        echo "Source not cleaned";
-		        break;
-		        ;;
-		     * )
-		       echo "Please answer yes or no";
-		      ;;
-		  esac;
-	  done;
-# clear ccache & stat
+	y|Y )
+	    make O=$BUILD_KERNEL_OUT_DIR clean;
+	    make O=$BUILD_KERNEL_OUT_DIR distclean;
+	    make O=$BUILD_KERNEL_OUT_DIR mrproper;
+	    rm -rf $KERNEL_IMG $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/Image
+	    rm -rf $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/dts
+	    rm -rf $BUILD_KERNEL_DIR/build.log
+	    echo -e "${yellow}" "Source cleaned"${restore};
+	    break;
+	    ;;
+	n|N )
+	    echo -e "${yellow}" "Source not cleaned"${restore};
+	    break;
+	    ;;
+	  * )
+	    echo -e "${yellow}" "Please answer yes or no"${restore};
+	    ;;
+	   esac;
+    done;
+    # clear ccache & stat
 	while true; do
-
-		echo -e "${cyan}";
-		read -rp "Clear ccache but keeping the config file? (y/n)" yn;
-		echo -e "${restore}"
-		case $yn in
-           y|Y )
-               ccache -C -z;
-               break;
-               ;;
-           n|N )
-               echo "ccache not cleared";
-               break;
-               ;;
-             * )
-               echo "Please answer yes or no";
-              ;;
-          esac;
-      done;
-	  echo -e "${yellow}"
-	  echo "==================================="
-	  echo "  END: FUNCTION CLEAN              "
-	  echo "==================================="
-	  echo -e "${restore}"
+	    echo -e "${yellow}";
+	    read -rp "Clear ccache but keeping the config file? (y/n)" yn;
+	    echo -e "${restore}"
+	    case $yn in
+	y|Y )
+	    ccache -C -z;
+	    break;
+	    ;;
+	n|N )
+	    echo -e "${yellow}" "ccache not cleared"${restore};
+	    break;
+	    ;;
+	* )
+	    echo -e "${yellow}" "Please answer yes or no"${restore};
+	    ;;
+	 esac;
+   done;
+   echo -e "${green}"
+   echo "==================================="
+   echo "  END: FUNCTION CLEAN              "
+   echo "==================================="
+   echo -e "${restore}"
 }
 
 FUNCTION_GENERATE_DEFCONFIG()
 {
-        echo -e "${blink_red}"
+        echo -e "${green}"
         echo "======================================="
         echo " START : FUNCTION GENERATE DEFCONFIG   "
         echo "======================================="
         echo -e "${restore}"
-        echo -e "${green}"
-        echo "build config ="$KERNEL_DEFCONFIG ""
+        echo -e "${cyan}"
+        echo "build config" ="$KERNEL_DEFCONFIG "
         echo -e "${restore}"
 
 if [ "$CLANG_CROSS_COMPILE" ]
@@ -157,12 +156,11 @@ then
 	         CC=$CLANG_CROSS_COMPILE $KERNEL_DEFCONFIG || exit -1
 else
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
-			CROSS_COMPILE=$BUILD_CROSS_COMPILE_ARCH64 $KERNEL_DEFCONFIG || exit -1
+	         CROSS_COMPILE=$BUILD_CROSS_COMPILE_ARCH64 $KERNEL_DEFCONFIG || exit -1
 fi
-
 	cp $BUILD_KERNEL_OUT_DIR/.config $BUILD_KERNEL_DIR/$CONFIG_DIR/$KERNEL_DEFCONFIG
 
-	echo -e "${yellow}"
+	echo -e "${green}"
 	echo "==================================="
 	echo "  END: FUNCTION GENERATE DEFCONFIG "
 	echo "==================================="
@@ -171,14 +169,11 @@ fi
 
 FUNCTION_BUILD_KERNEL()
 {
-	echo -e "${blink_red}"
+	echo -e "${green}"
 	echo "================================="
 	echo "  START : FUNCTION_BUILD_KERNEL  "
 	echo "================================="
 	echo -e "${restore}"
-
-    rm $KERNEL_IMG $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/Image
-    rm -rf $BUILD_KERNEL_OUT_DIR/$BOOT_DIR/dts
 
 if [ "$CLANG_CROSS_COMPILE" ]
 then
@@ -209,7 +204,7 @@ fi
 
 FUNCTION_MAKE_ZIP()
 {
-        echo -e "${blink_red}"
+        echo -e "${green}"
         echo "============================"
         echo " START : FUNCTION MAKE ZIPS "
         echo "============================"
@@ -247,6 +242,65 @@ fi
 	echo -e "${restore}"
 }
 
+FUNCTION_GENERATE_CHANGELOG()
+{
+	echo -e "${green}"
+	echo "======================================="
+	echo " START : FUNCTION GENERATE CHANGELOG   "
+	echo "======================================="
+	echo -e "${restore}"
+
+	    while true; do
+		echo -e "${cyan}";
+		read -rp "Generate Changelog? (y/n)" yn;
+		echo -e "${restore}"
+		case $yn in
+		   y|Y )
+            # Exports Changelog
+            cd $BUILD_KERNEL_DIR
+            export Changelog=Changelog.txt
+            if [ -f $Changelog ];
+            then
+            rm -f $Changelog
+            fi
+            touch $Changelog
+            # Print something to build output
+            echo -e "${yellow}""Generating changelog..."${restore}
+            for i in $(seq 5);
+            do
+            export After_Date=`date --date="$i days ago" +%m-%d-%Y`
+            k=$(expr $i - 1)
+            export Until_Date=`date --date="$k days ago" +%m-%d-%Y`
+            # Line with after --- until was too long for a small ListView
+	        echo '====================' >> $Changelog;
+	        echo  "     "$Until_Date    >> $Changelog;
+	        echo '====================' >> $Changelog;
+	        echo >> $Changelog;
+	        # Cycle through every repo to find commits between 2 dates
+	        git log --oneline --after=$After_Date --until=$Until_Date >> $Changelog
+	        echo >> $Changelog;
+	        done
+	        sed -i 's/project/   */g' $Changelog
+	        echo -e ""
+	        echo -e "${cyan}" "Changelog Generated"${restore};
+	        break;
+	        ;;
+	    n|N )
+	        echo -e "${yellow}""Changelog Not Generate"${restore};
+	        break;
+	        ;;
+	     * )
+	       echo "Please Answer yes or no";
+	       ;;
+	   esac;
+	done;
+	echo -e "${yellow}"
+	echo "==================================="
+	echo "  END: FUNCTION GENERATE CHANGELOG "
+	echo "==================================="
+	echo -e "${restore}"
+}
+
 (
     START_TIME=`date +%s`
     FUNCTION_RESET_GIT_BRANCH
@@ -254,11 +308,12 @@ fi
     FUNCTION_GENERATE_DEFCONFIG
     FUNCTION_BUILD_KERNEL
     FUNCTION_MAKE_ZIP
+    FUNCTION_GENERATE_CHANGELOG
 
     END_TIME=`date +%s`
 
     let "ELAPSED_TIME=$END_TIME-$START_TIME"
-    echo -e "${green}"
+    echo -e "${cyan}"
     echo "Total compile time is $ELAPSED_TIME seconds"
     echo -e "${restore}"
 ) 2>&1 | tee -a ./build.log;
