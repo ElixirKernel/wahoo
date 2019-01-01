@@ -374,7 +374,6 @@ CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
 		-funsafe-math-optimizations -ffast-math \
 		-fvectorize -fslp-vectorize -fopenmp \
 		-mllvm -polly \
-		-mllvm -polly-parallel -lgomp \
 		-mllvm -polly-run-dce \
 		-mllvm -polly-run-inliner \
 		-mllvm -polly-opt-fusion=max \
@@ -634,8 +633,9 @@ endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_GCC_TC	:= --gcc-toolchain=$(GCC_TOOLCHAIN)
 endif
-KBUILD_CFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX)
-KBUILD_AFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX)
+CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX) $(CLANG_OPT_FLAGS)
+KBUILD_CFLAGS += $(CLANG_FLAGS)
+KBUILD_AFLAGS += $(CLANG_FLAGS)
 KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
 KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
 endif
