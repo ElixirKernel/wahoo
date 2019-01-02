@@ -343,7 +343,7 @@ include scripts/Kbuild.include
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc
+CC		= $(CROSS_COMPILE)gcc $(GCC_OPT_FLAGS)
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -369,18 +369,6 @@ AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
 CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 
-# Optimization flags specific to clang
-CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
-		-funsafe-math-optimizations -ffast-math \
-		-fvectorize -fslp-vectorize -fopenmp \
-		-mllvm -polly \
-		-mllvm -polly-run-dce \
-		-mllvm -polly-run-inliner \
-		-mllvm -polly-opt-fusion=max \
-		-mllvm -polly-ast-use-context \
-		-mllvm -polly-vectorizer=stripmine \
-		-mllvm -polly-detect-keep-going
-
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE    := \
 		-I$(srctree)/arch/$(hdr-arch)/include/uapi \
@@ -401,11 +389,46 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_FLAGS)
 
+# Optimization flags specific to clang
+ifeq ($(cc-name), clang)
+CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
+		    -funsafe-math-optimizations -ffast-math \
+		    -fvectorize -fslp-vectorize -fopenmp \
+		    -mllvm -polly \
+		    -mllvm -polly-run-dce \
+		    -mllvm -polly-run-inliner \
+		    -mllvm -polly-opt-fusion=max \
+		    -mllvm -polly-ast-use-context \
+		    -mllvm -polly-vectorizer=stripmine \
+		    -mllvm -polly-detect-keep-going
+
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -std=gnu89 $(CLANG_FLAGS)
+
+else
+# Optimization flags specific to gcc
+GCC_OPT_FLAGS := -pipe -DNDEBUG -O3 -ffast-math -fgcse-lm -fgcse-sm -fsingle-precision-constant \
+           -fforce-addr -fsched-spec-load -funroll-loops -fpredictive-commoning \
+           -ftree-vectorize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all \
+		   -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block -floop-nest-optimize
+
+KBUILD_CFLAGS := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+		   -fno-strict-aliasing -fno-common \
+		   -Werror-implicit-function-declaration \
+		   -Wno-format-security \
+		   -std=gnu89 -mcpu=cortex-cortex-a73.cortex-a53+crypto+crc -mtune=cortex-a73.cortex-a53 -fdiagnostics-color=always \
+		   -Wno-maybe-uninitialized -Wno-unused-variable -Wno-unused-function -Wno-unused-label \
+		   -Wno-memset-transposed-args -Wno-bool-compare -Wno-logical-not-parentheses -Wno-discarded-array-qualifiers \
+		   -Wno-unused-const-variable -Wno-array-bounds -Wno-incompatible-pointer-types \
+		   -Wno-misleading-indentation -Wno-tautological-compare -Wno-error=misleading-indentation \
+		   -Wno-format-truncation -Wno-duplicate-decl-specifier -Wno-memset-elt-size -Wno-bool-operation \
+		   -Wno-int-in-bool-context -Wno-parentheses -Wno-switch-unreachable -Wno-stringop-overflow -Wno-format-overflow \
+		   -Wno-nonnull -Wno-attributes -Wno-packed-not-aligned -Wno-error=sizeof-pointer-div -Wno-sizeof-pointer-div \
+		   -Wno-sizeof-pointer-memaccess -Wno-stringop-truncation $(call cc-KBUILD_CFLAGS := option,-fno-PIE) $(GCC_OPT_FLAGS)
+endif
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=

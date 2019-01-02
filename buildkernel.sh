@@ -14,10 +14,10 @@ DTS_DIR=arch/arm64/boot/dts/qcom
 CONFIG_DIR=arch/arm64/configs
 AK2_DIR=$BUILD_KERNEL_DIR/../AnyKernel2
 
-export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-8.0/bin/clang
-export BUILD_CROSS_COMPILE_ARCH64=~/Android/Toolchains/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+#export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-8.0/bin/clang
+export BUILD_CROSS_COMPILE_ARCH64=~/Android/Toolchains/aarch64-linux-gnu-8.2/bin/aarch64-linux-gnu-
 export BUILD_CROSS_COMPILE_ARM32=~/Android/Toolchains/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+export KBUILD_COMPILER_STRING=--version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//'
 export BUILD_JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
 
 KERNEL_DEFCONFIG=elixir_wahoo_defconfig
@@ -180,6 +180,7 @@ then
 	make -C $BUILD_KERNEL_DIR O=$BUILD_KERNEL_OUT_DIR -j$BUILD_JOB_NUMBER ARCH=arm64 \
             CC="ccache $CLANG_CROSS_COMPILE" \
             HOSTCC="ccache $CLANG_CROSS_COMPILE" \
+            KBUILD_COMPILER_STRING="${CLANG_CROSS_COMPILE}" \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE_ARM32=$BUILD_CROSS_COMPILE_ARM32 \
             CROSS_COMPILE=$BUILD_CROSS_COMPILE_ARCH64 || exit -1
