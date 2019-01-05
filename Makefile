@@ -387,7 +387,7 @@ LINUXINCLUDE    := \
 		-Iinclude \
 		$(USERINCLUDE)
 
-KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_FLAGS)
+KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_OPT_FLAGS)
 
 # Optimization flags specific to clang
 ifeq ($(cc-name), clang)
@@ -405,33 +405,29 @@ CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
-		   -Wno-format-security \
-		   -std=gnu89 $(CLANG_FLAGS)
-else
+		   -Wno-format-security -std=gnu89 \
+		   $(CLANG_OPT_FLAGS)
+endif
+
 # Optimization flags specific to gcc
+ifeq ($(cc-name),gcc)
 GCC_OPT_FLAGS := -pipe -DNDEBUG -O3 -funsafe-math-optimizations -ffast-math -fgcse-lm -fgcse-sm -fopenmp \
            -fsingle-precision-constant -fforce-addr -fsched-spec-load -funroll-loops -fpredictive-commoning \
            -ftree-vectorize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all \
            -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block -floop-nest-optimize
 
-KBUILD_CFLAGS := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
-		   -Wno-format-security \
-		   -std=gnu89 -mcpu=cortex-a73.cortex-a53+crypto+crc -mtune=cortex-a73.cortex-a53 -fdiagnostics-color=always \
-		   -Wno-maybe-uninitialized -Wno-unused-variable -Wno-unused-function -Wno-unused-label \
-		   -Wno-memset-transposed-args -Wno-bool-compare -Wno-logical-not-parentheses -Wno-discarded-array-qualifiers \
-		   -Wno-unused-const-variable -Wno-array-bounds -Wno-incompatible-pointer-types \
-		   -Wno-misleading-indentation -Wno-tautological-compare -Wno-error=misleading-indentation \
-		   -Wno-format-truncation -Wno-duplicate-decl-specifier -Wno-memset-elt-size -Wno-bool-operation \
-		   -Wno-int-in-bool-context -Wno-parentheses -Wno-switch-unreachable -Wno-stringop-overflow -Wno-format-overflow \
-		   -Wno-nonnull -Wno-attributes -Wno-packed-not-aligned -Wno-error=sizeof-pointer-div -Wno-sizeof-pointer-div \
-		   -Wno-sizeof-pointer-memaccess -Wno-stringop-truncation $(call cc-KBUILD_CFLAGS := option,-fno-PIE) $(GCC_OPT_FLAGS)
+		   -Wno-format-security -std=gnu89 \
+		   -mcpu=cortex-a73.cortex-a53+crypto+crc \
+		   -mtune=cortex-a73.cortex-a53 \
+		   $(GCC_OPT_FLAGS)
 endif
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
-KBUILD_AFLAGS   := -D__ASSEMBLY__ $(CLANG_FLAGS)
+KBUILD_AFLAGS   := -D__ASSEMBLY__ $(CLANG_OPT_FLAGS)
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
@@ -655,9 +651,8 @@ endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_GCC_TC	:= --gcc-toolchain=$(GCC_TOOLCHAIN)
 endif
-CLANG_FLAGS	:= $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX) $(CLANG_OPT_FLAGS)
-KBUILD_CFLAGS += $(CLANG_FLAGS)
-KBUILD_AFLAGS += $(CLANG_FLAGS)
+KBUILD_CFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX)
+KBUILD_AFLAGS += $(CLANG_TARGET) $(CLANG_GCC_TC) $(CLANG_PREFIX)
 KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
 KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
 endif
@@ -673,6 +668,8 @@ KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
+KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
+KBUILD_CFLAGS	+= $(call cc-disable-warning,misleading-indentation,)
 
 ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= $(call cc-option,-ffunction-sections,)
