@@ -6,6 +6,9 @@
 ##             environment and run it before building.            ##
 ####################################################################
 
+#Clang (0 Off, 1 On), else default GCC
+CLANG_CROSSCOMPILE=0
+
 BUILD_KERNEL_DIR=$(readlink -f .);
 BUILD_KERNEL_OUT=$BUILD_KERNEL_DIR/../wahoo_kernel_out
 BUILD_KERNEL_OUT_DIR=$BUILD_KERNEL_OUT/KERNEL_OBJ
@@ -14,10 +17,15 @@ DTS_DIR=arch/arm64/boot/dts/qcom
 CONFIG_DIR=arch/arm64/configs
 AK2_DIR=$BUILD_KERNEL_DIR/../AnyKernel2
 
+if [ $CLANG_CROSSCOMPILE = 1 ]; then
 export CLANG_CROSS_COMPILE=~/Android/Toolchains/dragontc-8.0/bin/clang
+export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 export BUILD_CROSS_COMPILE_ARCH64=~/Android/Toolchains/aarch64-linux-gnu-8.2/bin/aarch64-linux-gnu-
 export BUILD_CROSS_COMPILE_ARM32=~/Android/Toolchains/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+else
+export BUILD_CROSS_COMPILE_ARCH64=~/Android/Toolchains/aarch64-linux-gnu-8.2/bin/aarch64-linux-gnu-
+export BUILD_CROSS_COMPILE_ARM32=~/Android/Toolchains/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+fi
 export BUILD_JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
 
 KERNEL_DEFCONFIG=elixir_wahoo_defconfig
