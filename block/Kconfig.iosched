@@ -4,7 +4,7 @@ menu "IO Schedulers"
 
 config IOSCHED_NOOP
 	bool
-	default y
+	default n
 	---help---
 	  The no-op I/O scheduler is a minimal scheduler that does basic merging
 	  and sorting. Its main uses include non-disk based block devices like
@@ -25,7 +25,7 @@ config IOSCHED_TEST
 
 config IOSCHED_DEADLINE
 	tristate "Deadline I/O scheduler"
-	default y
+	default n
 	---help---
 	  The deadline I/O scheduler is simple and compact. It will provide
 	  CSCAN service with FIFO expiration of requests, switching to
@@ -46,7 +46,7 @@ config IOSCHED_TRIPNDROID
 
 config IOSCHED_ROW
 	tristate "ROW I/O scheduler"
-	default y
+	default n
 	---help---
 	  The ROW I/O scheduler gives priority to READ requests over the
 	  WRITE requests when dispatching, without starving WRITE requests.
@@ -57,7 +57,7 @@ config IOSCHED_ROW
 
 config IOSCHED_SIO
 	tristate "Simple I/O scheduler"
-	default y
+	default n
 	---help---
 	  The Simple I/O scheduler is an extremely simple scheduler,
 	  based on noop and deadline, that relies on deadlines to
@@ -67,7 +67,7 @@ config IOSCHED_SIO
 
 config IOSCHED_CFQ
 	tristate "CFQ I/O scheduler"
-	default y
+	default n
 	---help---
 	  The CFQ I/O scheduler tries to distribute bandwidth equally
 	  among all processes in the system. It should provide a fair
@@ -78,7 +78,7 @@ config IOSCHED_CFQ
 
 config IOSCHED_ANXIETY
 	tristate "Anxiety I/O scheduler"
-	default y
+	default n
 	---help---
 	  The Anxiety I/O scheduler prioritizes latency over everything
 	  else. It uses a simple algorithm that selects from FIFO queues
@@ -94,7 +94,7 @@ config CFQ_GROUP_IOSCHED
 
 config IOSCHED_FIOPS
 	tristate "IOPS based I/O scheduler"
-	default y
+	default n
 	---help---
 	  This is an IOPS based I/O scheduler. It will try to distribute
           IOPS equally among all processes in the system. It's mainly for
@@ -102,7 +102,7 @@ config IOSCHED_FIOPS
 
 config IOSCHED_ZEN
 	tristate "Zen I/O scheduler"
-	default y
+	default n
 	---help---
 	FCFS, dispatches are back-inserted, deadlines ensure fairness.
         Should work best with devices where there is no travel delay.
@@ -128,7 +128,13 @@ config BFQ_GROUP_IOSCHED
 
 choice
 
-config DEFAULT_BFQ
+	prompt "Default I/O scheduler"
+	default DEFAULT_CFQ
+	help
+	  Select the I/O scheduler which will be used by default for all
+	  block devices.
+	  
+    config DEFAULT_BFQ
 		bool "BFQ" if IOSCHED_BFQ=y
 		help
 		  Selects BFQ as the default I/O scheduler which will be
@@ -137,12 +143,6 @@ config DEFAULT_BFQ
 		  as desired, independently of the disk parameters and with
 		  any workload. It also tries to guarantee low latency to
 		  interactive and soft real-time applications.
-
-	prompt "Default I/O scheduler"
-	default DEFAULT_CFQ
-	help
-	  Select the I/O scheduler which will be used by default for all
-	  block devices.
 
 	config DEFAULT_DEADLINE
 		bool "Deadline" if IOSCHED_DEADLINE=y
