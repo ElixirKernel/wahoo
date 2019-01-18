@@ -343,7 +343,7 @@ include scripts/Kbuild.include
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-CC		= $(CROSS_COMPILE)gcc $(GCC_OPT_FLAGS)
+CC		= $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -387,7 +387,7 @@ LINUXINCLUDE    := \
 		-Iinclude \
 		$(USERINCLUDE)
 
-KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_OPT_FLAGS)
+KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_OPT_FLAGS) $(GCC_OPT_FLAGS)
 
 # Optimization flags specific to clang
 ifeq ($(cc-name), clang)
@@ -407,8 +407,9 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security -std=gnu89 \
 		   $(CLANG_OPT_FLAGS)
-else
+endif
 # Optimization flags specific to gcc
+ifeq ($(cc-name),gcc)
 GCC_OPT_FLAGS := -pipe -DNDEBUG -O3 -funsafe-math-optimizations -ffast-math -fgcse-lm -fgcse-sm -fopenmp \
            -fsingle-precision-constant -fforce-addr -fsched-spec-load -funroll-loops -fpredictive-commoning \
            -ftree-vectorize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all \
@@ -425,7 +426,7 @@ endif
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
-KBUILD_AFLAGS   := -D__ASSEMBLY__ $(CLANG_OPT_FLAGS)
+KBUILD_AFLAGS   := -D__ASSEMBLY__ $(CLANG_OPT_FLAGS) $(GCC_OPT_FLAGS)
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
