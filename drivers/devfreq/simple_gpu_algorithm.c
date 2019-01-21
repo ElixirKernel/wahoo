@@ -67,9 +67,9 @@ int simple_gpu_algorithm(int level, int *val,
 			ret = 0;
 		}
 	}
-	*val = ret;
+	*val = 0;
 
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(simple_gpu_algorithm);
 
