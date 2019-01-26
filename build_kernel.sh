@@ -18,7 +18,7 @@ CONFIG_DIR="arch/arm64/configs"
 AK2_DIR="${BUILD_KERNEL_DIR}/../AnyKernel2"
 
 if [[ "${CLANG_CROSSCOMPILE}" == "true" ]]; then
-export PATH=~/Android/Toolchains/dragontc-8.0/bin:${PATH}
+export PATH=~/Android/Toolchains/dragontc-9.0/bin:${PATH}
 export CLANG_CROSS_COMPILE="clang"
 export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 export PATH=~/Android/Toolchains/aarch64-linux-gnu-8.2/bin:${PATH}

@@ -410,7 +410,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 endif
 # Optimization flags specific to gcc
 ifeq ($(cc-name),gcc)
-GCC_OPT_FLAGS := -pipe -DNDEBUG -O3 -funsafe-math-optimizations -ffast-math -fgcse-lm -fgcse-sm -fopenmp \
+GCC_OPT_FLAGS := -pipe -DNDEBUG -Ofast -funsafe-math-optimizations -ffast-math -fgcse-lm -fgcse-sm -fopenmp \
            -fsingle-precision-constant -fforce-addr -fsched-spec-load -funroll-loops -fpredictive-commoning \
            -ftree-vectorize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all \
            -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block -floop-nest-optimize
