@@ -7,7 +7,7 @@
 ####################################################################
 
 #Clang switch (true or false), default GCC
-CLANG_CROSSCOMPILE=false
+CLANG_CROSSCOMPILE=true
 
 BUILD_KERNEL_DIR=$(readlink -f .);
 BUILD_KERNEL_OUT="${BUILD_KERNEL_DIR}/../wahoo_kernel_out"
