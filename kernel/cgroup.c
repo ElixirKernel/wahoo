@@ -61,6 +61,7 @@
 #include <linux/atomic.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
+#include <linux/state_notifier.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/cgroup.h>
@@ -2790,9 +2791,11 @@ static ssize_t __cgroup_procs_write(struct kernfs_open_file *of, char *buf,
 		ret = cgroup_attach_task(cgrp, tsk, threadgroup);
 
 	/* Boost CPU to the max for 500 ms when launcher becomes a top app */
-	if (!memcmp(tsk->comm, "s.nexuslauncher", sizeof("s.nexuslauncher")) &&
-		!memcmp(cgrp->kn->name, "top-app", sizeof("top-app")) && !ret) {
-		cpu_input_boost_kick_max(1000);
+	if (!memcmp(cgrp->kn->name, "top-app", sizeof("top-app")) &&
+		(!memcmp(tsk->comm, "s.nexuslauncher", sizeof("s.nexuslauncher")) ||
+		!memcmp(tsk->comm, "pe.lawnchair.ci", sizeof("pe.lawnchair.ci"))) &&
+		!ret && !state_suspended) {
+		cpu_input_boost_kick_max(500);
 		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);
 	}
 
