@@ -31,16 +31,14 @@ export BUILD_CROSS_COMPILE_ARCH64="aarch64-linux-gnu-"
 export PATH=~/Android/Toolchains/arm-linux-androideabi-4.9/bin:${PATH}
 export BUILD_CROSS_COMPILE_ARM32="arm-linux-androideabi-"
 fi
-export BUILD_JOB_NUMBER=`grep processor /proc/cpuinfo|wc -l`
+export BUILD_JOB_NUMBER=$(grep processor /proc/cpuinfo|wc -l)
 
 KERNEL_DEFCONFIG="elixir_wahoo_defconfig"
 KERNEL_IMG_NAME="Image.lz4-dtb"
 KERNEL_IMG="${BUILD_KERNEL_OUT}/${KERNEL_IMG_NAME}"
 
 # Bash Colors
-green='\033[1;92m'
 red='\033[01;31m'
-blue='\033[0;94m'
 yellow='\033[1;93m'
 cyan='\033[1;96m'
 restore='\033[0m'
@@ -77,11 +75,11 @@ parse_git_branch() {
 	    break;
 	    ;;
 	n|N )
-	    echo -e "${yellow}" "Local branch not reset"${restore};
+	    echo -e "${yellow}" "Local branch not reset""${restore}";
 	    break;
 	    ;;
 	  * )
-	    echo -e "${yellow}" "Please answer yes or no"${restore};
+	    echo -e "${yellow}" "Please answer yes or no""${restore}";
 	    ;;
 	    esac;
 	 done;
@@ -114,15 +112,15 @@ FUNCTION_CLEAN()
 	    rm -rf "${KERNEL_IMG}" "${BUILD_KERNEL_OUT_DIR}/${BOOT_DIR}/Image"
 	    rm -rf "${BUILD_KERNEL_OUT_DIR}/${BOOT_DIR}/dts"
 	    rm -rf "${BUILD_KERNEL_DIR}/build.log"
-	    echo -e "${yellow}" "Source cleaned"${restore};
+	    echo -e "${yellow}" "Source cleaned""${restore}";
 	    break;
 	    ;;
 	n|N )
-	    echo -e "${yellow}" "Source not cleaned"${restore};
+	    echo -e "${yellow}" "Source not cleaned""${restore}";
 	    break;
 	    ;;
 	  * )
-	    echo -e "${yellow}" "Please answer yes or no"${restore};
+	    echo -e "${yellow}" "Please answer yes or no""${restore}";
 	    ;;
 	   esac;
     done;
@@ -137,11 +135,11 @@ FUNCTION_CLEAN()
 	    break;
 	    ;;
 	n|N )
-	    echo -e "${yellow}" "ccache not cleared"${restore};
+	    echo -e "${yellow}" "ccache not cleared""${restore}";
 	    break;
 	    ;;
 	* )
-	    echo -e "${yellow}" "Please answer yes or no"${restore};
+	    echo -e "${yellow}" "Please answer yes or no""${restore}";
 	    ;;
 	 esac;
    done;
@@ -163,7 +161,7 @@ FUNCTION_GENERATE_DEFCONFIG()
         echo "build config" ="${KERNEL_DEFCONFIG}"
         echo -e "${restore}"
 
-if [[ "${CLANG_CROSS_COMPILE}" ]]
+if [[ -n "${CLANG_CROSS_COMPILE}" ]]
 then
 	make -C "${BUILD_KERNEL_DIR}" O="${BUILD_KERNEL_OUT_DIR}" -j"${BUILD_JOB_NUMBER}" ARCH=arm64 \
 	         CC="${CLANG_CROSS_COMPILE}" "${KERNEL_DEFCONFIG}" || exit -1
@@ -188,7 +186,7 @@ FUNCTION_BUILD_KERNEL()
 	echo "================================="
 	echo -e "${restore}"
 
-if [[ "${CLANG_CROSS_COMPILE}" ]]
+if [[ -n "${CLANG_CROSS_COMPILE}" ]]
 then
 	make -C "${BUILD_KERNEL_DIR}" O="${BUILD_KERNEL_OUT_DIR}" -j"${BUILD_JOB_NUMBER}" ARCH=arm64 \
             CC="ccache ${CLANG_CROSS_COMPILE}" \
@@ -224,9 +222,9 @@ FUNCTION_MAKE_ZIP()
         echo -e "${restore}"
 
 if [[ -s ~/KERNELver ]]; then
-        echo -e "${red}" make boot zip = "Wahoo-$(cat ~/KERNELver)-`date +[%m-%d-%y-%H%M%S]`""${restore}"
+        echo -e "${red}" make boot zip = "Wahoo-$(cat ~/KERNELver)-$(date +[%m-%d-%y-%H%M%S])""${restore}"
 else
-        echo -e "${red}" make boot zip = "Wahoo-`grep 'ElixirKernel-*v' "${BUILD_KERNEL_OUT_DIR}"/.config | sed 's/.*".//g' | sed 's/-S.*//g'`-`date +[%m-%d-%y-%H%M%S]`""${restore}"
+        echo -e "${red}" make boot zip = "Wahoo-$(grep 'ElixirKernel-*v' "${BUILD_KERNEL_OUT_DIR}"/.config | sed 's/.*".//g' | sed 's/-S.*//g')-$(date +[%m-%d-%y-%H%M%S])""${restore}"
 fi;
 # check if "AnyKernel2" is there
 if [[ ! -e /"${AK2_DIR}" ]]; then
@@ -242,11 +240,11 @@ fi;
 if [[ -s ~/KERNELver ]]; then
     export KERNEL_VER=$(cat ~/KERNELver)
 else
-    export KERNEL_VER="`grep 'ElixirKernel-*v' "${BUILD_KERNEL_OUT_DIR}"/.config | sed 's/.*".//g' | sed 's/-S.*//g'`"
+    export KERNEL_VER="$(grep 'ElixirKernel-*v' "${BUILD_KERNEL_OUT_DIR}"/.config | sed 's/.*".//g' | sed 's/-S.*//g')"
 fi
-    cd "${AK2_DIR}"
-    zip -r9 wahoo-${KERNEL_VER}-`date +[%m-%d-%y-%H%M%S]`.zip * -x .git README.md *placeholder
-    mv wahoo-*.zip "${BUILD_KERNEL_OUT}"
+    cd "${AK2_DIR}" || exit
+    zip -r9 Wahoo-"${KERNEL_VER}"-$(date +[%m-%d-%y-%H%M%S]).zip * -x .git README.md *placeholder
+    mv Wahoo-*.zip "${BUILD_KERNEL_OUT}"
 
 	echo -e "${yellow}"
 	echo "=========================="
@@ -270,7 +268,7 @@ FUNCTION_GENERATE_CHANGELOG()
 		case $yn in
 		   y|Y )
             # Exports Changelog
-            cd "${BUILD_KERNEL_DIR}"
+            cd "${BUILD_KERNEL_DIR}" || exit
             export Changelog=Changelog.txt
             if [[ -f "${Changelog}" ]];
             then
@@ -281,12 +279,12 @@ FUNCTION_GENERATE_CHANGELOG()
             echo -e "${yellow}""Generating changelog...""${restore}"
             for i in $(seq 5);
             do
-            export After_Date="`date --date="$i days ago" +%m-%d-%Y`"
-            k=$(expr $i - 1)
-            export Until_Date="`date --date="$k days ago" +%m-%d-%Y`"
+            export After_Date="$(date --date="$i days ago" +%m-%d-%Y)"
+            k=$(expr "$i" - 1)
+            export Until_Date="$(date --date="$k days ago" +%m-%d-%Y)"
             # Line with after --- until was too long for a small ListView
 	        echo '====================' >> "${Changelog}";
-	        echo "   "${Until_Date}     >> "${Changelog}";
+	        echo "   ""${Until_Date}"     >> "${Changelog}";
 	        echo '====================' >> "${Changelog}";
 	        echo >> "${Changelog}";
 	        # Cycle through every repo to find commits between 2 dates
@@ -315,7 +313,7 @@ FUNCTION_GENERATE_CHANGELOG()
 }
 
 (
-    START_TIME=`date +%s`
+    START_TIME=$(date +%s)
     FUNCTION_RESET_GIT_BRANCH
     FUNCTION_CLEAN
     FUNCTION_GENERATE_DEFCONFIG
@@ -323,7 +321,7 @@ FUNCTION_GENERATE_CHANGELOG()
     FUNCTION_MAKE_ZIP
     FUNCTION_GENERATE_CHANGELOG
 
-    END_TIME=`date +%s`
+    END_TIME=$(date +%s)
     let "ELAPSED_TIME=${END_TIME}-${START_TIME}"
     echo -e "${cyan}"
     echo "Total compile time is ${ELAPSED_TIME} seconds"
