@@ -816,26 +816,3 @@ void flush_kthread_worker(struct kthread_worker *worker)
 	wait_for_completion(&fwork.done);
 }
 EXPORT_SYMBOL_GPL(flush_kthread_worker);
-
-/**
- * kthread_destroy_worker - destroy a kthread worker
- * @worker: worker to be destroyed
- *
- * Flush and destroy @worker.  The simple flush is enough because the kthread
- * worker API is used only in trivial scenarios.  There are no multi-step state
- * machines needed.
- */
-void kthread_destroy_worker(struct kthread_worker *worker)
-{
-	struct task_struct *task;
-
-	task = worker->task;
-	if (WARN_ON(!task))
-		return;
-
-	flush_kthread_worker(worker);
-	kthread_stop(task);
-	WARN_ON(!list_empty(&worker->work_list));
-	kfree(worker);
-}
-EXPORT_SYMBOL(kthread_destroy_worker);
