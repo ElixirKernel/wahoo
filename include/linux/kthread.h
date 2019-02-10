@@ -94,8 +94,6 @@ struct kthread_work {
 	struct list_head	node;
 	kthread_work_func_t	func;
 	struct kthread_worker	*worker;
-	/* Number of canceling calls that are running at the moment. */
-	int			canceling;
 };
 
 struct kthread_delayed_work {
@@ -187,8 +185,6 @@ bool kthread_queue_delayed_work(struct kthread_worker *worker,
 
 void flush_kthread_work(struct kthread_work *work);
 void flush_kthread_worker(struct kthread_worker *worker);
-
-bool kthread_cancel_work_sync(struct kthread_work *work);
 
 void kthread_destroy_worker(struct kthread_worker *worker);
 
