@@ -13,11 +13,7 @@ void cpu_input_boost_kick_max(unsigned int duration_ms);
 void cpu_input_boost_kick_wake(void);
 void cpu_input_boost_kick_general(unsigned int duration_ms);
 
-static inline bool should_kick_frame_boost(void)
-{
-	return time_before(jiffies,
-			   last_input_jiffies + msecs_to_jiffies(3250));
-}
+bool cpu_input_boost_should_boost_frame(void);
 #else
 static inline void cpu_input_boost_kick(void)
 {
@@ -30,7 +26,7 @@ static inline void cpu_input_boost_kick_general(unsigned int duration_ms)
 {
 }
 
-static inline bool should_kick_frame_boost(void)
+static inline bool cpu_input_boost_should_boost_frame(void)
 {
 	return false;
 }
