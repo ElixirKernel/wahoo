@@ -43,14 +43,11 @@ module_param(general_stune_boost, int, 0644);
 #endif
 
 /* Available bits for boost_drv state */
-#define SCREEN_AWAKE		BIT(0)
-#define INPUT_BOOST			BIT(1)
-#define WAKE_BOOST			BIT(2)
-#define MAX_BOOST			BIT(3)
-#define GENERAL_BOOST		BIT(4)
-#define INPUT_STUNE_BOOST	BIT(5)
-#define MAX_STUNE_BOOST		BIT(6)
-#define GENERAL_STUNE_BOOST	BIT(7)
+#define SCREEN_AWAKE	BIT(0)
+#define INPUT_BOOST		BIT(1)
+#define WAKE_BOOST		BIT(2)
+#define MAX_BOOST		BIT(3)
+#define GENERAL_BOOST	BIT(4)
 
 struct boost_drv {
 	struct workqueue_struct *wq;
@@ -67,8 +64,12 @@ struct boost_drv {
 	atomic64_t general_boost_expires;
 	atomic_t general_boost_dur;
 	atomic_t state;
+
+	bool input_stune_active;
 	int input_stune_slot;
+	bool max_stune_active;
 	int max_stune_slot;
+	bool general_stune_active;
 	int general_stune_slot;
 };
 
@@ -123,27 +124,21 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
-static void update_stune_boost(struct boost_drv *b, u32 state, u32 bit, int level,
-			    int *slot)
+static void update_stune_boost(struct boost_drv *b, bool *active, int value,
+			       int *slot)
 {
-	if (level && !(state & bit)) {
-		if (!do_stune_boost("top-app", level, slot))
-			set_boost_bit(b, bit);
-	}
+	if (value && !*active)
+		*active = !do_stune_boost("top-app", value, slot);
 }
 
-static void clear_stune_boost(struct boost_drv *b, u32 state, u32 bit, int slot)
+static void clear_stune_boost(struct boost_drv *b, bool *active, int slot)
 {
-	if (state & bit) {
-		reset_stune_boost("top-app", slot);
-		clear_boost_bit(b, bit);
-	}
+	if (*active)
+		*active = reset_stune_boost("top-app", slot);
 }
 
 static void unboost_all_cpus(struct boost_drv *b)
 {
-	u32 state = get_boost_state(b);
-
 	if (!cancel_delayed_work_sync(&b->input_unboost) &&
 		!cancel_delayed_work_sync(&b->general_unboost) &&
 		!cancel_delayed_work_sync(&b->max_unboost))
@@ -152,9 +147,9 @@ static void unboost_all_cpus(struct boost_drv *b)
 	clear_boost_bit(b, INPUT_BOOST| WAKE_BOOST | MAX_BOOST | GENERAL_BOOST);
 	update_online_cpu_policy();
 
-	clear_stune_boost(b, state, INPUT_STUNE_BOOST, b->input_stune_slot);
-	clear_stune_boost(b, state, MAX_STUNE_BOOST, b->max_stune_slot);
-	clear_stune_boost(b, state, GENERAL_STUNE_BOOST, b->general_stune_slot);
+	clear_stune_boost(b, &b->input_stune_active, b->input_stune_slot);
+	clear_stune_boost(b, &b->max_stune_active, b->max_stune_slot);
+	clear_stune_boost(b, &b->general_stune_active, b->general_stune_slot);
 }
 
 bool cpu_input_boost_should_boost_frame(void)
@@ -252,14 +247,13 @@ void cpu_input_boost_kick_general(unsigned int duration_ms)
 static void input_boost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(work, typeof(*b), input_boost);
-	u32 state = get_boost_state(b);
 
 	if (!cancel_delayed_work_sync(&b->input_unboost)) {
 		set_boost_bit(b, INPUT_BOOST);
 		update_online_cpu_policy();
 
-		update_stune_boost(b, state, INPUT_STUNE_BOOST,
-				   input_stune_boost, &b->input_stune_slot);
+		update_stune_boost(b, &b->input_stune_active, input_stune_boost,
+				   &b->input_stune_slot);
 	}
 
 	queue_delayed_work(b->wq, &b->input_unboost,
@@ -270,24 +264,22 @@ static void input_unboost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), input_unboost);
-	u32 state = get_boost_state(b);
 
 	clear_boost_bit(b, INPUT_BOOST);
 	update_online_cpu_policy();
 
-	clear_stune_boost(b, state, INPUT_STUNE_BOOST, b->input_stune_slot);
+	clear_stune_boost(b, &b->input_stune_active, b->input_stune_slot);
 }
 
 static void max_boost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(work, typeof(*b), max_boost);
-	u32 state = get_boost_state(b);
 
 	if (!cancel_delayed_work_sync(&b->max_unboost)) {
 		set_boost_bit(b, MAX_BOOST);
 		update_online_cpu_policy();
 
-		update_stune_boost(b, state, MAX_STUNE_BOOST, max_stune_boost,
+		update_stune_boost(b, &b->max_stune_active, max_stune_boost,
 				   &b->max_stune_slot);
 	}
 
@@ -299,24 +291,22 @@ static void max_unboost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), max_unboost);
-	u32 state = get_boost_state(b);
 
 	clear_boost_bit(b, WAKE_BOOST | MAX_BOOST);
 	update_online_cpu_policy();
 
-	clear_stune_boost(b, state, MAX_STUNE_BOOST, b->max_stune_slot);
+	clear_stune_boost(b, &b->max_stune_active, b->max_stune_slot);
 }
 
 static void general_boost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(work, typeof(*b), general_boost);
-	u32 state = get_boost_state(b);
 
 	if (!cancel_delayed_work_sync(&b->general_unboost)) {
 		set_boost_bit(b, GENERAL_BOOST);
 		update_online_cpu_policy();
 
-		update_stune_boost(b, state, GENERAL_STUNE_BOOST,
+		update_stune_boost(b, &b->general_stune_active,
 				   general_stune_boost, &b->general_stune_slot);
 	}
 
@@ -328,12 +318,11 @@ static void general_unboost_worker(struct work_struct *work)
 {
 	struct boost_drv *b = container_of(to_delayed_work(work),
 					   typeof(*b), general_unboost);
-	u32 state = get_boost_state(b);
 
 	clear_boost_bit(b, GENERAL_BOOST);
 	update_online_cpu_policy();
 
-	clear_stune_boost(b, state, GENERAL_STUNE_BOOST, b->general_stune_slot);
+	clear_stune_boost(b, &b->general_stune_active, b->general_stune_slot);
 }
 
 static int cpu_notifier_cb(struct notifier_block *nb,
