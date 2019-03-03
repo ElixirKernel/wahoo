@@ -391,9 +391,9 @@ KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_OPT_FLAGS) $(GCC_OPT_FLAGS)
 
 # Optimization flags specific to clang
 ifeq ($(cc-name), clang)
-CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo \
+CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo -fopenmp \
 		    -funsafe-math-optimizations -ffast-math \
-		    -fvectorize -fslp-vectorize -fopenmp \
+		    -fvectorize -fslp-vectorize -ftree-vectorize  \
 		    -mllvm -polly \
 		    -mllvm -polly-run-dce \
 		    -mllvm -polly-run-inliner \
