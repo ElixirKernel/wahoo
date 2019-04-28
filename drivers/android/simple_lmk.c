@@ -335,7 +335,8 @@ static int simple_lmk_init_set(const char *val, const struct kernel_param *kp)
 	if (atomic_cmpxchg(&init_done, 0, 1))
 		return 0;
 
-	thread = kthread_run(simple_lmk_reclaim_thread, NULL, "simple_lmkd");
+	thread = kthread_run_perf_critical(simple_lmk_reclaim_thread, NULL,
+					   "simple_lmkd");
 	if (IS_ERR(thread))
 		panic("Failed to start Simple LMK reclaim thread");
 
