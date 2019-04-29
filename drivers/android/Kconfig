@@ -31,6 +31,33 @@ config ANDROID_BINDER_DEVICES
 	  created. Each binder device has its own context manager, and is
 	  therefore logically separated from the other devices.
 
+config ANDROID_SIMPLE_LMK
+	bool "Simple Android Low Memory Killer"
+	depends on !ANDROID_LOW_MEMORY_KILLER && !MEMCG
+	---help---
+	  This is a complete low memory killer solution for Android that is
+	  small and simple. Processes are killed according to the priorities
+	  that Android gives them, so that the least important processes are
+	  always killed first. Processes are killed until memory deficits are
+	  satisfied, as observed from the page allocator's slow allocation path.
+
+if ANDROID_SIMPLE_LMK
+
+config ANDROID_SIMPLE_LMK_MINFREE
+	int "Minimum MiB of memory to free per reclaim"
+	range 8 512
+	default 64
+	help
+	  Simple LMK will try to free at least this much memory per reclaim.
+
+config ANDROID_SIMPLE_LMK_USE_REAPER
+	bool "Use OOM reaper to free memory faster"
+	help
+	  If kernel support for OOM reaper is present, enable this to make
+	  Simple LMK utilize it and thus free processes' memory faster.
+
+endif
+
 endif # if ANDROID
 
 endmenu

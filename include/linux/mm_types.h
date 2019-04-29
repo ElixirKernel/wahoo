@@ -223,10 +223,6 @@ struct page {
 #ifdef LAST_CPUPID_NOT_IN_PAGE_FLAGS
 	int _last_cpupid;
 #endif
-
-#ifdef CONFIG_ANDROID_SIMPLE_LMK
-	bool reserved_for_lmk;
-#endif
 }
 /*
  * The struct page can be forced to be double word aligned so that atomic ops
@@ -534,6 +530,10 @@ struct mm_struct {
 	atomic_long_t hugetlb_usage;
 #endif
 	struct work_struct async_put_work;
+#ifdef CONFIG_ANDROID_SIMPLE_LMK
+	wait_queue_head_t *slmk_waitq;
+	atomic_t *slmk_counter;
+#endif
 };
 
 static inline void mm_init_cpumask(struct mm_struct *mm)
