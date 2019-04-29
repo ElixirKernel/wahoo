@@ -191,6 +191,7 @@ then
 	make -C "${BUILD_KERNEL_DIR}" O="${BUILD_KERNEL_OUT_DIR}" -j"${BUILD_JOB_NUMBER}" ARCH=arm64 \
             CC="ccache ${CLANG_CROSS_COMPILE}" \
             HOSTCC="ccache ${CLANG_CROSS_COMPILE}" \
+            CLANG_TRIPLE="aarch64-linux-gnu-" \
             CROSS_COMPILE_ARM32="${BUILD_CROSS_COMPILE_ARM32}" \
             CROSS_COMPILE="${BUILD_CROSS_COMPILE_ARCH64}" || exit -1
 
