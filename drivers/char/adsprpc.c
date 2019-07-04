@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,7 +25,6 @@
 #include <linux/hash.h>
 #include <linux/msm_ion.h>
 #include <soc/qcom/secure_buffer.h>
-#include <soc/qcom/smd.h>
 #include <soc/qcom/glink.h>
 #include <soc/qcom/subsystem_notif.h>
 #include <soc/qcom/subsystem_restart.h>
@@ -64,6 +63,7 @@
 #define BALIGN		128
 #define NUM_CHANNELS	4		/* adsp,sdsp,mdsp,cdsp */
 #define NUM_SESSIONS	9		/*8 compute, 1 cpz*/
+
 #define FASTRPC_CTX_MAGIC (0xbeeddeed)
 #define FASTRPC_CTX_MAX (256)
 #define FASTRPC_CTXID_MASK (0xFF0)
@@ -78,6 +78,7 @@
 #define FASTRPC_LINK_DISCONNECTING (0x7)
 
 #define PERF_KEYS "count:flush:map:copy:glink:getargs:putargs:invalidate:invoke"
+#define FASTRPC_STATIC_HANDLE_KERNEL (1)
 #define FASTRPC_STATIC_HANDLE_LISTENER (3)
 #define FASTRPC_STATIC_HANDLE_MAX (20)
 
@@ -112,11 +113,11 @@ static inline uint64_t buf_page_offset(uint64_t buf)
 	return offset;
 }
 
-static inline uint64_t buf_num_pages(uint64_t buf, size_t len)
+static inline int buf_num_pages(uint64_t buf, size_t len)
 {
 	uint64_t start = buf_page_start(buf) >> PAGE_SHIFT;
 	uint64_t end = (((uint64_t) buf + len - 1) & PAGE_MASK) >> PAGE_SHIFT;
-	uint64_t nPages = end - start + 1;
+	int nPages = end - start + 1;
 	return nPages;
 }
 
@@ -220,7 +221,6 @@ struct fastrpc_channel_ctx {
 	struct completion workport;
 	struct notifier_block nb;
 	struct kref kref;
-	int channel;
 	int sesscount;
 	int ssrcount;
 	void *handle;
@@ -246,7 +246,6 @@ struct fastrpc_apps {
 	spinlock_t hlock;
 	struct ion_client *client;
 	struct device *dev;
-	bool glink;
 	spinlock_t ctxlock;
 	struct smq_invoke_ctx *ctxtable[FASTRPC_CTX_MAX];
 };
@@ -298,7 +297,6 @@ struct fastrpc_file {
 	int cid;
 	int ssrcount;
 	int pd;
-	int file_close;
 	struct fastrpc_apps *apps;
 	struct fastrpc_perf perf;
 	struct dentry *debugfs_file;
@@ -311,21 +309,18 @@ static struct fastrpc_channel_ctx gcinfo[NUM_CHANNELS] = {
 	{
 		.name = "adsprpc-smd",
 		.subsys = "adsp",
-		.channel = SMD_APPS_QDSP,
 		.link.link_info.edge = "lpass",
 		.link.link_info.transport = "smem",
 	},
 	{
 		.name = "mdsprpc-smd",
 		.subsys = "modem",
-		.channel = SMD_APPS_MODEM,
 		.link.link_info.edge = "mpss",
 		.link.link_info.transport = "smem",
 	},
 	{
 		.name = "sdsprpc-smd",
 		.subsys = "slpi",
-		.channel = SMD_APPS_DSPS,
 		.link.link_info.edge = "dsps",
 		.link.link_info.transport = "smem",
 		.vmid = VMID_SSC_Q6,
@@ -860,7 +855,7 @@ static int context_build_overlap(struct smq_invoke_ctx *ctx)
 		ctx->overs[i].raix = i;
 		ctx->overps[i] = &ctx->overs[i];
 	}
-	sort(ctx->overps, nbufs, sizeof(*ctx->overps), overlap_ptr_cmp, NULL);
+	sort(ctx->overps, nbufs, sizeof(*ctx->overps), overlap_ptr_cmp, 0);
 	max.start = 0;
 	max.end = 0;
 	for (i = 0; i < nbufs; ++i) {
@@ -1161,7 +1156,6 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 		int i = ctx->overps[oix]->raix;
 		uintptr_t mstart, mend;
 		size_t len = lpra[i].buf.len;
-
 		if (!len)
 			continue;
 		if (ctx->maps[i])
@@ -1251,7 +1245,6 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 		size_t mlen;
 		uint64_t buf;
 		size_t len = lpra[i].buf.len;
-
 		if (!len)
 			continue;
 		if (map)
@@ -1456,7 +1449,7 @@ static int fastrpc_invoke_send(struct smq_invoke_ctx *ctx,
 	struct smq_msg *msg = &ctx->msg;
 	struct fastrpc_file *fl = ctx->fl;
 	struct fastrpc_channel_ctx *channel_ctx = &fl->apps->channel[fl->cid];
-	int err = 0, len;
+	int err = 0;
 
 	VERIFY(err, NULL != channel_ctx->chan);
 	if (err)
@@ -1471,80 +1464,19 @@ static int fastrpc_invoke_send(struct smq_invoke_ctx *ctx,
 	msg->invoke.page.addr = ctx->buf ? ctx->buf->phys : 0;
 	msg->invoke.page.size = buf_page_size(ctx->used);
 
-	if (fl->apps->glink) {
-		if (fl->ssrcount != channel_ctx->ssrcount) {
-			err = -ECONNRESET;
-			goto bail;
-		}
-		VERIFY(err, channel_ctx->link.port_state ==
-				FASTRPC_LINK_CONNECTED);
-		if (err)
-			goto bail;
-		err = glink_tx(channel_ctx->chan,
-			(void *)&fl->apps->channel[fl->cid], msg, sizeof(*msg),
-			GLINK_TX_REQ_INTENT);
-	} else {
-		spin_lock(&fl->apps->hlock);
-		len = smd_write((smd_channel_t *)
-				channel_ctx->chan,
-				msg, sizeof(*msg));
-		spin_unlock(&fl->apps->hlock);
-		VERIFY(err, len == sizeof(*msg));
+	if (fl->ssrcount != channel_ctx->ssrcount) {
+		err = -ECONNRESET;
+		goto bail;
 	}
+	VERIFY(err, channel_ctx->link.port_state ==
+			FASTRPC_LINK_CONNECTED);
+	if (err)
+		goto bail;
+	err = glink_tx(channel_ctx->chan,
+		(void *)&fl->apps->channel[fl->cid], msg, sizeof(*msg),
+		GLINK_TX_REQ_INTENT);
  bail:
 	return err;
-}
-
-static void fastrpc_smd_read_handler(int cid)
-{
-	struct fastrpc_apps *me = &gfa;
-	struct smq_invoke_rsp rsp = {0};
-	int ret = 0, err = 0;
-	uint32_t index;
-
-	do {
-		ret = smd_read_from_cb(me->channel[cid].chan, &rsp,
-					sizeof(rsp));
-		if (ret != sizeof(rsp))
-			break;
-		index = (uint32_t)((rsp.ctx & FASTRPC_CTXID_MASK) >> 4);
-		VERIFY(err, index < FASTRPC_CTX_MAX);
-		if (err)
-			goto bail;
-
-		VERIFY(err, !IS_ERR_OR_NULL(me->ctxtable[index]));
-		if (err)
-			goto bail;
-
-		VERIFY(err, ((me->ctxtable[index]->ctxid == (rsp.ctx & ~1)) &&
-			me->ctxtable[index]->magic == FASTRPC_CTX_MAGIC));
-		if (err)
-			goto bail;
-
-		context_notify_user(me->ctxtable[index], rsp.retval);
-	} while (ret == sizeof(rsp));
-
-bail:
-	if (err)
-		pr_err("adsprpc: invalid response or context\n");
-}
-
-static void smd_event_handler(void *priv, unsigned event)
-{
-	struct fastrpc_apps *me = &gfa;
-	int cid = (int)(uintptr_t)priv;
-
-	switch (event) {
-	case SMD_EVENT_OPEN:
-		complete(&me->channel[cid].work);
-		break;
-	case SMD_EVENT_CLOSE:
-		fastrpc_notify_drivers(me, cid);
-		break;
-	case SMD_EVENT_DATA:
-		fastrpc_smd_read_handler(cid);
-		break;
-	}
 }
 
 static void fastrpc_init(struct fastrpc_apps *me)
@@ -1578,6 +1510,15 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 
 	if (fl->profile)
 		getnstimeofday(&invoket);
+
+	if (!kernel) {
+		VERIFY(err, invoke->handle != FASTRPC_STATIC_HANDLE_KERNEL);
+		if (err) {
+			pr_err("adsprpc: ERROR: %s: user application %s trying to send a kernel RPC message to channel %d",
+				__func__, current->comm, cid);
+			goto bail;
+		}
+	}
 
 	VERIFY(err, fl->sctx != NULL);
 	if (err)
@@ -1679,7 +1620,7 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 	int destVMperm[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 	int hlosVMperm[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 
-	VERIFY(err, 0 == (err = fastrpc_channel_open(fl)));
+	VERIFY(err, !fastrpc_channel_open(fl));
 	if (err)
 		goto bail;
 	if (init->flags == FASTRPC_INIT_ATTACH) {
@@ -1687,7 +1628,7 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 		int tgid = current->tgid;
 		ra[0].buf.pv = (void *)&tgid;
 		ra[0].buf.len = sizeof(tgid);
-		ioctl.inv.handle = 1;
+		ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 		ioctl.inv.sc = REMOTE_SCALARS_MAKE(0, 1, 0);
 		ioctl.inv.pra = ra;
 		ioctl.fds = NULL;
@@ -1760,7 +1701,7 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 		ra[5].buf.len = sizeof(inbuf.siglen);
 		fds[5] = 0;
 
-		ioctl.inv.handle = 1;
+		ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 		ioctl.inv.sc = REMOTE_SCALARS_MAKE(6, 4, 0);
 		if (uproc->attrs)
 			ioctl.inv.sc = REMOTE_SCALARS_MAKE(7, 6, 0);
@@ -1784,11 +1725,13 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 
 		if (!init->filelen)
 			goto bail;
-		VERIFY(err, proc_name = kzalloc(init->filelen, GFP_KERNEL));
+
+		proc_name = kzalloc(init->filelen, GFP_KERNEL);
+		VERIFY(err, !IS_ERR_OR_NULL(proc_name));
 		if (err)
 			goto bail;
-		VERIFY(err, 0 == copy_from_user(proc_name,
-			(unsigned char *)init->file, init->filelen));
+		VERIFY(err, 0 == copy_from_user((void *)proc_name,
+			(void __user *)init->file, init->filelen));
 		if (err)
 			goto bail;
 		inbuf.pgid = current->tgid;
@@ -1829,7 +1772,7 @@ static int fastrpc_init_process(struct fastrpc_file *fl,
 		ra[2].buf.pv = (void *)pages;
 		ra[2].buf.len = sizeof(*pages);
 		fds[2] = 0;
-		ioctl.inv.handle = 1;
+		ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 
 		ioctl.inv.sc = REMOTE_SCALARS_MAKE(8, 3, 0);
 		ioctl.inv.pra = ra;
@@ -1873,7 +1816,7 @@ static int fastrpc_release_current_dsp_process(struct fastrpc_file *fl)
 	tgid = fl->tgid;
 	ra[0].buf.pv = (void *)&tgid;
 	ra[0].buf.len = sizeof(tgid);
-	ioctl.inv.handle = 1;
+	ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 	ioctl.inv.sc = REMOTE_SCALARS_MAKE(1, 1, 0);
 	ioctl.inv.pra = ra;
 	ioctl.fds = NULL;
@@ -1916,7 +1859,7 @@ static int fastrpc_mmap_on_dsp(struct fastrpc_file *fl, uint32_t flags,
 	ra[2].buf.pv = (void *)&routargs;
 	ra[2].buf.len = sizeof(routargs);
 
-	ioctl.inv.handle = 1;
+	ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 	if (fl->apps->compat)
 		ioctl.inv.sc = REMOTE_SCALARS_MAKE(4, 2, 1);
 	else
@@ -1973,7 +1916,7 @@ static int fastrpc_munmap_on_dsp_rh(struct fastrpc_file *fl,
 		ra[0].buf.pv = (void *)&routargs;
 		ra[0].buf.len = sizeof(routargs);
 
-		ioctl.inv.handle = 1;
+		ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 		ioctl.inv.sc = REMOTE_SCALARS_MAKE(7, 0, 1);
 		ioctl.inv.pra = ra;
 		ioctl.fds = NULL;
@@ -2021,7 +1964,7 @@ static int fastrpc_munmap_on_dsp(struct fastrpc_file *fl,
 	ra[0].buf.pv = (void *)&inargs;
 	ra[0].buf.len = sizeof(inargs);
 
-	ioctl.inv.handle = 1;
+	ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
 	if (fl->apps->compat)
 		ioctl.inv.sc = REMOTE_SCALARS_MAKE(5, 1, 0);
 	else
@@ -2050,7 +1993,6 @@ static int fastrpc_mmap_remove_ssr(struct fastrpc_file *fl)
 	int err = 0, ret = 0;
 	struct fastrpc_apps *me = &gfa;
 	struct ramdump_segment *ramdump_segments_rh = NULL;
-
 	do {
 		match = NULL;
 		spin_lock(&me->hlock);
@@ -2124,10 +2066,11 @@ static int fastrpc_internal_mmap(struct fastrpc_file *fl,
 
 	mutex_lock(&fl->map_mutex);
 	if (!fastrpc_mmap_find(fl, ud->fd, (uintptr_t)ud->vaddrin, ud->size,
-			       ud->flags, &map)){
+			       ud->flags, &map)) {
 		mutex_unlock(&fl->map_mutex);
 		return 0;
 	}
+
 	VERIFY(err, !fastrpc_mmap_create(fl, ud->fd, 0,
 			(uintptr_t)ud->vaddrin, ud->size, ud->flags, &map));
 	if (err)
@@ -2151,12 +2094,10 @@ static void fastrpc_channel_close(struct kref *kref)
 
 	ctx = container_of(kref, struct fastrpc_channel_ctx, kref);
 	cid = ctx - &gcinfo[0];
-	if (!me->glink)
-		smd_close(ctx->chan);
-	else
-		fastrpc_glink_close(ctx->chan, cid);
-
+	fastrpc_glink_close(ctx->chan, cid);
 	ctx->chan = NULL;
+	glink_unregister_link_state_cb(ctx->link.link_notify_handle);
+	ctx->link.link_notify_handle = NULL;
 	mutex_unlock(&me->smd_mutex);
 	pr_info("'closed /dev/%s c %d %d'\n", gcinfo[cid].name,
 						MAJOR(me->dev_no), cid);
@@ -2242,7 +2183,7 @@ bail:
 }
 
 static void fastrpc_glink_notify_state(void *handle, const void *priv,
-				unsigned int event)
+				unsigned event)
 {
 	struct fastrpc_apps *me = &gfa;
 	int cid = (int)(uintptr_t)priv;
@@ -2314,9 +2255,6 @@ static int fastrpc_file_free(struct fastrpc_file *fl)
 		return 0;
 	}
 	(void)fastrpc_release_current_dsp_process(fl);
-	spin_lock(&fl->hlock);
-	fl->file_close = 1;
-	spin_unlock(&fl->hlock);
 	fastrpc_context_list_dtor(fl);
 	fastrpc_buf_list_free(fl);
 	hlist_for_each_entry_safe(map, n, &fl->maps, hn) {
@@ -2342,7 +2280,7 @@ static int fastrpc_device_release(struct inode *inode, struct file *file)
 			debugfs_remove(fl->debugfs_file);
 		mutex_destroy(&fl->map_mutex);
 		fastrpc_file_free(fl);
-		file->private_data = NULL;
+		file->private_data = 0;
 	}
 	return 0;
 }
@@ -2519,16 +2457,16 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 		spin_lock(&fl->hlock);
 		hlist_for_each_entry_safe(buf, n, &fl->bufs, hn) {
 			len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-					"%s %pK %s %pK %s %llx\n", "buf:",
-					buf, "buf->virt:", buf->virt,
-					"buf->phys:", buf->phys);
+						"%s %p %s %p %s %llx\n", "buf:",
+						buf, "buf->virt:", buf->virt,
+						"buf->phys:", buf->phys);
 		}
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
 					"\n%s\n",
 					"LIST OF MAPS:");
 		hlist_for_each_entry_safe(map, n, &fl->maps, hn) {
 			len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-						"%s %pK %s %lx %s %llx\n",
+						"%s %p %s %lx %s %llx\n",
 						"map:", map,
 						"map->va:", map->va,
 						"map->phys:", map->phys);
@@ -2538,7 +2476,7 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 					"LIST OF PENDING SMQCONTEXTS:");
 		hlist_for_each_entry_safe(ictx, n, &fl->clst.pending, hn) {
 			len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-						"%s %pK %s %u %s %u %s %u\n",
+						"%s %p %s %u %s %u %s %u\n",
 						"smqcontext:", ictx,
 						"sc:", ictx->sc,
 						"tid:", ictx->pid,
@@ -2549,7 +2487,7 @@ static ssize_t fastrpc_debugfs_read(struct file *filp, char __user *buffer,
 					"LIST OF INTERRUPTED SMQCONTEXTS:");
 		hlist_for_each_entry_safe(ictx, n, &fl->clst.interrupted, hn) {
 		len += scnprintf(fileinfo + len, DEBUGFS_SIZE - len,
-					"%s %pK %s %u %s %u %s %u\n",
+					"%s %p %s %u %s %u %s %u\n",
 					"smqcontext:", ictx,
 					"sc:", ictx->sc,
 					"tid:", ictx->pid,
@@ -2580,9 +2518,6 @@ static int fastrpc_channel_open(struct fastrpc_file *fl)
 	if (err)
 		goto bail;
 	cid = fl->cid;
-	VERIFY(err, cid >= 0 && cid < NUM_CHANNELS);
-	if (err)
-		goto bail;
 	if (me->channel[cid].ssrcount !=
 				 me->channel[cid].prevssrcount) {
 		if (!me->channel[cid].issubsystemup) {
@@ -2591,19 +2526,14 @@ static int fastrpc_channel_open(struct fastrpc_file *fl)
 				goto bail;
 		}
 	}
+	VERIFY(err, cid >= 0 && cid < NUM_CHANNELS);
+	if (err)
+		goto bail;
 	fl->ssrcount = me->channel[cid].ssrcount;
 	if ((kref_get_unless_zero(&me->channel[cid].kref) == 0) ||
 	    (me->channel[cid].chan == NULL)) {
-		if (me->glink) {
-			fastrpc_glink_register(cid, me);
-			VERIFY(err, 0 == fastrpc_glink_open(cid));
-		} else {
-			VERIFY(err, !smd_named_open_on_edge(FASTRPC_SMD_GUID,
-				    gcinfo[cid].channel,
-				    (smd_channel_t **)&me->channel[cid].chan,
-				    (void *)(uintptr_t)cid,
-				    smd_event_handler));
-		}
+		fastrpc_glink_register(cid, me);
+		VERIFY(err, 0 == fastrpc_glink_open(cid));
 		if (err)
 			goto bail;
 
@@ -2708,14 +2638,6 @@ static long fastrpc_device_ioctl(struct file *file, unsigned int ioctl_num,
 
 	p.inv.fds = NULL;
 	p.inv.attrs = NULL;
-	spin_lock(&fl->hlock);
-	if (fl->file_close == 1) {
-		err = EBADF;
-		pr_warn("ADSPRPC: fastrpc_device_release is happening, So not sending any new requests to DSP");
-		spin_unlock(&fl->hlock);
-		goto bail;
-	}
-	spin_unlock(&fl->hlock);
 
 	switch (ioctl_num) {
 	case FASTRPC_IOCTL_INVOKE:
@@ -2819,7 +2741,7 @@ static long fastrpc_device_ioctl(struct file *file, unsigned int ioctl_num,
 			p.init.init.memlen >= 0);
 		if (err)
 			goto bail;
-		VERIFY(err, 0 == fastrpc_init_process(fl, &p.init));
+		VERIFY(err, 0 == (err = fastrpc_init_process(fl, &p.init)));
 		if (err)
 			goto bail;
 		break;
@@ -2849,12 +2771,8 @@ static int fastrpc_restart_notifier_cb(struct notifier_block *nb,
 		ctx->ssrcount++;
 		ctx->issubsystemup = 0;
 		if (ctx->chan) {
-			if (me->glink)
-				fastrpc_glink_close(ctx->chan, cid);
-			else
-				smd_close(ctx->chan);
-
-			ctx->chan = 0;
+			fastrpc_glink_close(ctx->chan, cid);
+			ctx->chan = NULL;
 			pr_info("'restart notifier: closed /dev/%s c %d %d'\n",
 				 gcinfo[cid].name, MAJOR(me->dev_no), cid);
 		}
@@ -3078,7 +2996,7 @@ static int fastrpc_probe(struct platform_device *pdev)
 		}
 		return 0;
 	}
-	me->glink = of_property_read_bool(dev->of_node, "qcom,fastrpc-glink");
+
 	VERIFY(err, !of_platform_populate(pdev->dev.of_node,
 					  fastrpc_match_table,
 					  NULL, &pdev->dev));
@@ -3150,7 +3068,7 @@ static int __init fastrpc_device_init(void)
 	VERIFY(err, !IS_ERR(me->class));
 	if (err)
 		goto class_create_bail;
-	me->compat = (NULL == fops.compat_ioctl) ? 0 : 1;
+	me->compat = (fops.compat_ioctl == NULL) ? 0 : 1;
 	dev = device_create(me->class, NULL,
 				MKDEV(MAJOR(me->dev_no), 0),
 				NULL, gcinfo[0].name);
