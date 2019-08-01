@@ -18,7 +18,7 @@ CONFIG_DIR="arch/arm64/configs"
 AK2_DIR="${BUILD_KERNEL_DIR}/../AnyKernel2"
 
 if [[ "${CLANG_CROSSCOMPILE}" == "true" ]]; then
-export PATH=~/Android/Toolchains/linux-x86/clang-r353983c/bin:${PATH}
+export PATH=~/Android/Toolchains/linux-x86/clang-r353983e/bin:${PATH}
 export CLANG_CROSS_COMPILE="clang"
 export KBUILD_COMPILER_STRING=$(${CLANG_CROSS_COMPILE} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 export PATH=~/Android/Toolchains/aarch64-linux-gnu-8.3.0/bin:${PATH}
@@ -26,7 +26,7 @@ export BUILD_CROSS_COMPILE_ARCH64="aarch64-linux-gnu-"
 export PATH=~/Android/Toolchains/arm-linux-androideabi-4.9/bin:${PATH}
 export BUILD_CROSS_COMPILE_ARM32="arm-linux-androideabi-"
 else
-export PATH=~/Android/Toolchains/aarch64-linux-gnu-8.3.0/bin:${PATH}
+export PATH=~/Android/Toolchains/aarch64-linux-gnu/bin:${PATH}
 export BUILD_CROSS_COMPILE_ARCH64="aarch64-linux-gnu-"
 export PATH=~/Android/Toolchains/arm-linux-androideabi-4.9/bin:${PATH}
 export BUILD_CROSS_COMPILE_ARM32="arm-linux-androideabi-"
