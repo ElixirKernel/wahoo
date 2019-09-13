@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 4.4.190 Kernel Configuration
+# Linux/arm64 4.4.192 Kernel Configuration
 #
 CONFIG_ARM64=y
 CONFIG_64BIT=y
@@ -4344,6 +4344,7 @@ CONFIG_TRACING_SUPPORT=y
 # CONFIG_TEST_KSTRTOX is not set
 # CONFIG_TEST_PRINTF is not set
 # CONFIG_TEST_RHASHTABLE is not set
+# CONFIG_TEST_HASH is not set
 # CONFIG_DMA_API_DEBUG is not set
 # CONFIG_TEST_FIRMWARE is not set
 # CONFIG_TEST_UDELAY is not set
@@ -4411,6 +4412,7 @@ CONFIG_INTEGRITY_AUDIT=y
 CONFIG_DEFAULT_SECURITY_SELINUX=y
 # CONFIG_DEFAULT_SECURITY_DAC is not set
 CONFIG_DEFAULT_SECURITY="selinux"
+CONFIG_XOR_BLOCKS=y
 CONFIG_CRYPTO=y
 
 #
