@@ -303,8 +303,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O3 -fomit-frame-pointer -std=gnu89
-HOSTCXXFLAGS = -O3
+HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fomit-frame-pointer -std=gnu89
+HOSTCXXFLAGS = -Ofast
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -387,41 +387,18 @@ LINUXINCLUDE    := \
 		-Iinclude \
 		$(USERINCLUDE)
 
-KBUILD_CPPFLAGS := -D__KERNEL__ $(CLANG_OPT_FLAGS) $(GCC_OPT_FLAGS)
-
-# Optimization flags specific to clang
-ifeq ($(cc-name), clang)
-CLANG_OPT_FLAGS :=-O3 -mcpu=kryo -mtune=kryo -fopenmp \
-		    -funsafe-math-optimizations -ffast-math \
-		    -fvectorize -fslp-vectorize -ftree-vectorize
-
+KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
-		   -Wno-format-security -std=gnu89 \
-		   $(CLANG_OPT_FLAGS)
-endif
-# Optimization flags specific to gcc
-ifeq ($(cc-name),gcc)
-GCC_OPT_FLAGS := -pipe -DNDEBUG -Ofast -funsafe-math-optimizations -ffast-math -fgcse-lm -fgcse-sm -fopenmp \
-           -fsingle-precision-constant -fforce-addr -fsched-spec-load -funroll-loops -fpredictive-commoning \
-           -ftree-vectorize -fgraphite -fgraphite-identity -floop-flatten -floop-parallelize-all \
-           -ftree-loop-linear -floop-interchange -floop-strip-mine -floop-block -floop-nest-optimize
-
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
-		   -fno-strict-aliasing -fno-common \
-		   -Werror-implicit-function-declaration \
-		   -Wno-format-security -std=gnu89 \
-		   -mcpu=cortex-a73.cortex-a53+crypto+crc \
-		   -mtune=cortex-a73.cortex-a53 \
-		   $(GCC_OPT_FLAGS)
-endif
+		   -Wno-format-security \
+		   -std=gnu89 $(call cc-option,-fno-PIE)
 
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
-KBUILD_AFLAGS   := -D__ASSEMBLY__ $(call cc-option,-fno-PIE) $(CLANG_OPT_FLAGS) $(GCC_OPT_FLAGS)
+KBUILD_AFLAGS   := -D__ASSEMBLY__ $(call cc-option,-fno-PIE)
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
@@ -650,6 +627,25 @@ KBUILD_CFLAGS += $(call cc-option, -no-integrated-as)
 KBUILD_AFLAGS += $(call cc-option, -no-integrated-as)
 endif
 
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS	+= -Ofast -fopenmp -lgomp -mcpu=cortex-a55+crypto+crc
+KBUILD_CFLAGS	+= -mllvm -polly \
+		   -mllvm -polly-run-dce \
+		   -mllvm -polly-run-inliner \
+		   -mllvm -polly-opt-fusion=max \
+		   -mllvm -polly-ast-use-context \
+		   -mllvm -polly-detect-keep-going \
+		   -mllvm -polly-vectorizer=polly \
+		   -mllvm -polly-vectorizer=stripmine \
+		   -mllvm -polly-omp-backend=LLVM \
+		   -mllvm -polly-scheduling=dynamic \
+		   -mllvm -polly-scheduling-chunksize=1 \
+		   -mllvm -polly-opt-maximize-bands=yes \
+		   -mllvm -polly-opt-simplify-deps=no \
+		   -mllvm -polly-rtc-max-arrays-per-group=40
+
+endif
+
 # The arch Makefile can set ARCH_{CPP,A,C}FLAGS to override the default
 # values of the respective KBUILD_* variables
 ARCH_CPPFLAGS :=
@@ -667,7 +663,7 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
 else
 ifeq ($(cc-name), clang)
-KBUILD_CFLAGS	+= -O3 $(call cc-option,-fsanitize=local-init)
+KBUILD_CFLAGS	+= -Ofast -mcpu=cortex-a55+crypto+crc $(call cc-option,-fsanitize=local-init)
 else
 KBUILD_CFLAGS   += -O2
 endif
