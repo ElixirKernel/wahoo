@@ -116,3 +116,4 @@ all.config
 
 # Object directory
 out/
+*.log
