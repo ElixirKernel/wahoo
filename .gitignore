@@ -116,4 +116,5 @@ all.config
 
 # Object directory
 out/
+*Changelog.txt
 *.log
